@@ -6,7 +6,6 @@
     <title>Flusso di Coscienza - Pensieri Liberi</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Stili aggiuntivi per le frecce del carosello e l'animazione della sezione Novità */
         .slider-container {
             position: relative;
         }
@@ -35,7 +34,6 @@
             right: 15px;
         }
 
-        /* Sezione Novità con grafica vettoriale e animazione */
         .section-title-novita {
             display: flex;
             align-items: center;
@@ -57,7 +55,6 @@
             100% { transform: scale(1); opacity: 0.8; }
         }
 
-        /* Stili per trasformare le card in estratti cliccabili */
         .card-articolo.estratto-cliccabile {
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -75,7 +72,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             position: relative;
-            max-height: 4.5em; /* Fallback di sicurezza */
+            max-height: 4.5em;
         }
         .leggi-continua-link {
             display: inline-block;
@@ -87,7 +84,7 @@
     </style>
 </head>
 <body>
-    <header>
+    <header id="site-header">
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>pensieri liberi</p>
         <nav class="main-nav">
@@ -137,6 +134,15 @@
     </main>
 
     <script>
+        window.addEventListener("scroll", () => {
+            const header = document.getElementById("site-header");
+            if (window.scrollY > 50) {
+                header.classList.add("scrolled");
+            } else {
+                header.classList.remove("scrolled");
+            }
+        });
+
         document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
@@ -184,7 +190,6 @@
                 return mapping[categoria] || { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800" };
             }
 
-            // Slider Ultimi 5 (aggiornato per rimando alla pagina leggi con ancora)
             const sliderWrapper = document.getElementById("slider-wrapper");
             const sliderDots = document.getElementById("slider-dots");
             const ultimi5 = articoli.slice(0, 5);
@@ -247,7 +252,6 @@
                 });
             }
 
-            // Griglia Principale con Estratti Cliccabili
             const container = document.getElementById("lista-articoli");
             container.innerHTML = "";
             articoli.forEach((articolo, index) => {
