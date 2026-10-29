@@ -6,18 +6,35 @@
     <title>Redazione - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Configurazione Firebase -->
+    <!-- Configurazione Firebase e Firestore -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-        projectId: "flusso-di-coscienza-4e96d",
-        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-        messagingSenderId: "617712339143",
-        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-      };
-      const app = initializeApp(firebaseConfig);
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Rendiamo db e le funzioni di Firestore globali per gli script della pagina
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.setDoc = setDoc;
+
+        // Segnale che Firebase è pronto per la redazione
+        window.dispatchEvent(new Event('firebase-ready'));
     </script>
 </head>
 <body>
@@ -74,7 +91,7 @@
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2 id="form-title">Pubblica un Nuovo Articolo</h2>
                 <form id="form-articolo" style="margin-top: 25px;">
-                    <input type="hidden" id="edit-index" value="-1">
+                    <input type="hidden" id="edit-id" value="">
                     
                     <div class="form-group">
                         <label for="titolo" style="display: flex; align-items: center; gap: 8px;">
@@ -243,8 +260,17 @@
 
     <script>
         const HASH_PASSWORD_CORRETTO = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+        let articoliInMemoria = [];
+        let proposteInMemoria = [];
+        let commentiInMemoria = [];
+        let sondaggiArchiviatiInMemoria = [];
 
-        document.addEventListener("DOMContentLoaded", async () => {
+        window.addEventListener("firebase-ready", async () => {
+            inizializzaPagina();
+        });
+
+        // Fallback nel caso DOMContentLoaded parta dopo l'evento Firebase
+        document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
             const h1Element = document.getElementById("titolo-dinamico");
@@ -261,22 +287,41 @@
             if (sessionStorage.getItem("owner_logged") === "true") {
                 mostraPannello();
             }
-
-            const categoriaSondaggioSalvata = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
-            document.getElementById("categoria-sondaggio").value = categoriaSondaggioSalvata;
-
-            const sondaggioSalvato = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
-            document.getElementById("input-sondaggio").value = sondaggioSalvato;
-
-            let opzioniSalvate = JSON.parse(localStorage.getItem("opzioni_sondaggio"));
-            if (!opzioniSalvate) {
-                opzioniSalvate = ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
-            }
-            caricaCampiOpzioni(opzioniSalvate);
-
-            const discussioneSalvata = localStorage.getItem("topic_discussione") || "Dibattito del Mese";
-            document.getElementById("input-discussione").value = discussioneSalvata;
         });
+
+        async function inizializzaPagina() {
+            if (!window.db) return;
+            
+            try {
+                // Carica impostazioni sondaggio attivo e discussione da Firestore
+                const configSnap = await window.getDocs(window.collection(window.db, "configurazioni"));
+                configSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (docSnap.id === "sondaggio_attivo") {
+                        if(data.categoria) document.getElementById("categoria-sondaggio").value = data.categoria;
+                        if(data.domanda) document.getElementById("input-sondaggio").value = data.domanda;
+                        if(data.opzioni) caricaCampiOpzioni(data.opzioni);
+                    }
+                    if (docSnap.id === "discussione_attiva") {
+                        if(data.argomento) document.getElementById("input-discussione").value = data.argomento;
+                    }
+                });
+
+                if(!document.getElementById("input-sondaggio").value) {
+                    document.getElementById("input-sondaggio").value = "L'intelligenza artificiale sostituirà il pensiero critico umano?";
+                    caricaCampiOpzioni(["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"]);
+                }
+                if(!document.getElementById("input-discussione").value) {
+                    document.getElementById("input-discussione").value = "Dibattito del Mese";
+                }
+
+                if (sessionStorage.getItem("owner_logged") === "true") {
+                    caricaDatiPannello();
+                }
+            } catch (err) {
+                console.error("Errore caricamento dati iniziali da Firestore:", err);
+            }
+        }
 
         function caricaCampiOpzioni(opzioni) {
             const container = document.getElementById("container-opzioni");
@@ -317,13 +362,18 @@
             }
         }
 
-        function mostraPannello() {
+        async function mostraPannello() {
             document.getElementById("login-box").style.display = "none";
             document.getElementById("redazione-panel").style.display = "block";
-            caricaListaGestione();
-            caricaListaSondaggiArchiviati();
-            caricaListaCommentiRedazione();
-            caricaProposteRedazione();
+            await caricaDatiPannello();
+        }
+
+        async function caricaDatiPannello() {
+            if (!window.db) return;
+            await caricaListaGestione();
+            await caricaListaSondaggiArchiviati();
+            await caricaListaCommentiRedazione();
+            await caricaProposteRedazione();
         }
 
         function effettuaLogout() {
@@ -367,176 +417,231 @@
             document.getElementById('editor-testo').focus();
         }
 
-        function caricaListaGestione() {
+        async function caricaListaGestione() {
             const container = document.getElementById("lista-gestione-articoli");
-            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
-            container.innerHTML = "";
+            container.innerHTML = "<p>Caricamento articoli...</p>";
+            
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "articoli"));
+                articoliInMemoria = [];
+                querySnapshot.forEach(docSnap => {
+                    articoliInMemoria.push({ id: docSnap.id, ...docSnap.data() });
+                });
 
-            if (articoli.length === 0) {
-                container.innerHTML = "<p>Nessun articolo pubblicato.</p>";
-                return;
-            }
-
-            articoli.forEach((art, index) => {
-                const div = document.createElement("div");
-                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
-                div.innerHTML = `
-                    <div>
-                        <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
-                        <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn-cat" onclick="preparaModifica(${index})">Modifica</button>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo(${index})">Elimina</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function caricaListaSondaggiArchiviati() {
-            const container = document.getElementById("lista-gestione-sondaggi-archiviati");
-            let archivio = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
-            container.innerHTML = "";
-
-            if (archivio.length === 0) {
-                container.innerHTML = "<p>Nessun sondaggio archiviato.</p>";
-                return;
-            }
-
-            archivio.forEach((sondaggio, index) => {
-                const div = document.createElement("div");
-                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
-                div.innerHTML = `
-                    <div>
-                        <strong style="font-size:1.1rem; color:#111;">${sondaggio.domanda}</strong><br>
-                        <small style="color:#666;">[${sondaggio.categoria}] - Archiviato il: ${sondaggio.dataArchiviazione} (${sondaggio.totaleVotanti} voti)</small>
-                    </div>
-                    <div>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaSondaggioArchiviato(${index})">Elimina</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function eliminaSondaggioArchiviato(index) {
-            if (confirm("Sei sicuro di voler eliminare definitivamente questo sondaggio dall'archivio?")) {
-                let archivio = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
-                archivio.splice(index, 1);
-                localStorage.setItem("archivio_sondaggi", JSON.stringify(archivio));
-                caricaListaSondaggiArchiviati();
-                alert("Sondaggio archiviato eliminato con successo.");
-            }
-        }
-
-        function caricaListaCommentiRedazione() {
-            const container = document.getElementById("lista-gestione-commenti");
-            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-            container.innerHTML = "";
-
-            if (commenti.length === 0) {
-                container.innerHTML = "<p>Nessun intervento presente nella discussione.</p>";
-                return;
-            }
-
-            commenti.forEach((com) => {
-                const div = document.createElement("div");
-                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #d4cbb8;";
-                
-                let risposteHtml = "";
-                if (com.risposte && com.risposte.length > 0) {
-                    com.risposte.forEach(resp => {
-                        risposteHtml += `
-                            <div style="background: #f0ebe1; padding: 10px; border-radius: 4px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                <div style="max-width: 80%;">
-                                    <strong style="font-size: 0.9rem; color:#333;">↳ ${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
-                                    <p style="margin: 4px 0 0 0; font-size: 0.9rem; color:#444;">${resp.testo}</p>
-                                </div>
-                                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b; padding: 4px 8px; font-size: 0.8rem;" onclick="eliminaRispostaRedazione(${com.id}, ${resp.id})">Elimina</button>
-                            </div>
-                        `;
-                    });
+                container.innerHTML = "";
+                if (articoliInMemoria.length === 0) {
+                    container.innerHTML = "<p>Nessun articolo pubblicato.</p>";
+                    return;
                 }
 
-                div.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="max-width: 75%;">
-                            <strong style="color:#111;">${com.autore}</strong> <small style="color:#666;">(${com.data}) - ❤️ ${com.likes} likes</small>
-                            <p style="margin: 6px 0 0 0; font-size: 0.95rem; color:#333; line-height: 1.4;">${com.testo}</p>
+                articoliInMemoria.forEach((art, index) => {
+                    const div = document.createElement("div");
+                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
+                    div.innerHTML = `
+                        <div>
+                            <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
+                            <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-cat" onclick="preparaModifica('${art.id}')">Modifica</button>
+                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo('${art.id}')">Elimina</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Errore caricamento articoli:", e);
+                container.innerHTML = "<p>Errore nel caricamento degli articoli da Firestore.</p>";
+            }
+        }
+
+        async function caricaListaSondaggiArchiviati() {
+            const container = document.getElementById("lista-gestione-sondaggi-archiviati");
+            container.innerHTML = "<p>Caricamento sondaggi archiviati...</p>";
+
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "sondaggi_archiviati"));
+                sondaggiArchiviatiInMemoria = [];
+                querySnapshot.forEach(docSnap => {
+                    sondaggiArchiviatiInMemoria.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                container.innerHTML = "";
+                if (sondaggiArchiviatiInMemoria.length === 0) {
+                    container.innerHTML = "<p>Nessun sondaggio archiviato.</p>";
+                    return;
+                }
+
+                sondaggiArchiviatiInMemoria.forEach((sondaggio) => {
+                    const div = document.createElement("div");
+                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
+                    div.innerHTML = `
+                        <div>
+                            <strong style="font-size:1.1rem; color:#111;">${sondaggio.domanda}</strong><br>
+                            <small style="color:#666;">[${sondaggio.categoria}] - Archiviato il: ${sondaggio.dataArchiviazione} (${sondaggio.totaleVotanti || 0} voti)</small>
                         </div>
                         <div>
-                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaCommentoAgora(${com.id})">Elimina</button>
+                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaSondaggioArchiviato('${sondaggio.id}')">Elimina</button>
                         </div>
-                    </div>
-                    <div style="margin-top: 10px; padding-left: 15px; border-left: 2px solid #d4cbb8;">
-                        ${risposteHtml}
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function eliminaCommentoAgora(id) {
-            if (confirm("Sei sicuro di voler eliminare questo commento e tutte le sue risposte?")) {
-                let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-                commenti = commenti.filter(c => c.id !== id);
-                localStorage.setItem("commenti_agora", JSON.stringify(commenti));
-                caricaListaCommentiRedazione();
-                alert("Commento eliminato.");
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Errore sondaggi archiviati:", e);
+                container.innerHTML = "<p>Errore nel caricamento.</p>";
             }
         }
 
-        function eliminaRispostaRedazione(commentoId, rispostaId) {
-            if (confirm("Sei sicuro di voler eliminare questa risposta?")) {
-                let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-                const commento = commenti.find(c => c.id === commentoId);
-                if (commento && commento.risposte) {
-                    commento.risposte = commento.risposte.filter(r => r.id !== rispostaId);
-                    localStorage.setItem("commenti_agora", JSON.stringify(commenti));
-                    caricaListaCommentiRedazione();
-                    alert("Risposta eliminata.");
+        async function eliminaSondaggioArchiviato(id) {
+            if (confirm("Sei sicuro di voler eliminare definitivamente questo sondaggio dall'archivio?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "sondaggi_archiviati", id));
+                    await caricaListaSondaggiArchiviati();
+                    alert("Sondaggio archiviato eliminato con successo.");
+                } catch (e) {
+                    console.error("Errore eliminazione sondaggio archiviato:", e);
+                    alert("Errore durante l'eliminazione.");
                 }
             }
         }
 
-        function caricaProposteRedazione() {
-            const container = document.getElementById("lista-proposte-redazione");
-            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
-            container.innerHTML = "";
+        async function caricaListaCommentiRedazione() {
+            const container = document.getElementById("lista-gestione-commenti");
+            container.innerHTML = "<p>Caricamento discussioni...</p>";
 
-            if (proposte.length === 0) {
-                container.innerHTML = "<p>Nessuna proposta ricevuta.</p>";
-                return;
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "commenti_agora"));
+                commentiInMemoria = [];
+                querySnapshot.forEach(docSnap => {
+                    commentiInMemoria.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                container.innerHTML = "";
+                if (commentiInMemoria.length === 0) {
+                    container.innerHTML = "<p>Nessun intervento presente nella discussione.</p>";
+                    return;
+                }
+
+                commentiInMemoria.forEach((com) => {
+                    const div = document.createElement("div");
+                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #d4cbb8;";
+                    
+                    let risposteHtml = "";
+                    if (com.risposte && com.risposte.length > 0) {
+                        com.risposte.forEach(resp => {
+                            risposteHtml += `
+                                <div style="background: #f0ebe1; padding: 10px; border-radius: 4px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="max-width: 80%;">
+                                        <strong style="font-size: 0.9rem; color:#333;">↳ ${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
+                                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; color:#444;">${resp.testo}</p>
+                                    </div>
+                                    <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b; padding: 4px 8px; font-size: 0.8rem;" onclick="eliminaRispostaRedazione('${com.id}', ${resp.id})">Elimina</button>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    div.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="max-width: 75%;">
+                                <strong style="color:#111;">${com.autore}</strong> <small style="color:#666;">(${com.data}) - ❤️ ${com.likes || 0} likes</small>
+                                <p style="margin: 6px 0 0 0; font-size: 0.95rem; color:#333; line-height: 1.4;">${com.testo}</p>
+                            </div>
+                            <div>
+                                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaCommentoAgora('${com.id}')">Elimina</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; padding-left: 15px; border-left: 2px solid #d4cbb8;">
+                            ${risposteHtml}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Errore commenti:", e);
+                container.innerHTML = "<p>Errore nel caricamento dei commenti.</p>";
             }
+        }
 
-            proposte.sort((a, b) => a.id - b.id);
+        async function eliminaCommentoAgora(id) {
+            if (confirm("Sei sicuro di voler eliminare questo commento e tutte le sue risposte?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "commenti_agora", id));
+                    await caricaListaCommentiRedazione();
+                    alert("Commento eliminato.");
+                } catch (e) {
+                    console.error("Errore eliminazione commento:", e);
+                    alert("Errore durante l'eliminazione.");
+                }
+            }
+        }
 
-            proposte.forEach((prop) => {
-                const div = document.createElement("div");
-                div.style.cssText = `background: ${prop.interessante ? '#f4efe6' : '#fcfbf7'}; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid ${prop.interessante ? '#b5a892' : '#d4cbb8'};`;
-                
-                div.innerHTML = `
-                    <div>
-                        <strong style="font-size:1.1rem; color:#111;">${prop.titolo}</strong><br>
-                        <small style="color:#666;">Autore: ${prop.autore} - Inviato il: ${prop.data}</small>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 500; margin-right: 5px;" title="Segna come interessante">
-                            <input type="checkbox" ${prop.interessante ? 'checked' : ''} onchange="toggleInteressanteProposta(${prop.id})" style="width: 18px; height: 18px; accent-color: #333; cursor: pointer;">
-                            Interessante
-                        </label>
-                        <button type="button" class="btn-cat" onclick="leggiProposta(${prop.id})">LEGGI</button>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="scartaProposta(${prop.id})">SCARTA</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
+        async function eliminaRispostaRedazione(commentoId, rispostaId) {
+            if (confirm("Sei sicuro di voler eliminare questa risposta?")) {
+                try {
+                    const commento = commentiInMemoria.find(c => c.id === commentoId);
+                    if (commento && commento.risposte) {
+                        commento.risposte = commento.risposte.filter(r => r.id !== rispostaId);
+                        await window.updateDoc(window.doc(window.db, "commenti_agora", commentoId), {
+                            risposte: commento.risposte
+                        });
+                        await caricaListaCommentiRedazione();
+                        alert("Risposta eliminata.");
+                    }
+                } catch (e) {
+                    console.error("Errore eliminazione risposta:", e);
+                    alert("Errore durante l'eliminazione.");
+                }
+            }
+        }
+
+        async function caricaProposteRedazione() {
+            const container = document.getElementById("lista-proposte-redazione");
+            container.innerHTML = "<p>Caricamento proposte...</p>";
+
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "proposte_articoli"));
+                proposteInMemoria = [];
+                querySnapshot.forEach(docSnap => {
+                    proposteInMemoria.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                container.innerHTML = "";
+                if (proposteInMemoria.length === 0) {
+                    container.innerHTML = "<p>Nessuna proposta ricevuta.</p>";
+                    return;
+                }
+
+                proposteInMemoria.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                proposteInMemoria.forEach((prop) => {
+                    const div = document.createElement("div");
+                    div.style.cssText = `background: ${prop.interessante ? '#f4efe6' : '#fcfbf7'}; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid ${prop.interessante ? '#b5a892' : '#d4cbb8'};`;
+                    
+                    div.innerHTML = `
+                        <div>
+                            <strong style="font-size:1.1rem; color:#111;">${prop.titolo}</strong><br>
+                            <small style="color:#666;">Autore: ${prop.autore} - Inviato il: ${prop.data}</small>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 500; margin-right: 5px;" title="Segna come interessante">
+                                <input type="checkbox" ${prop.interessante ? 'checked' : ''} onchange="toggleInteressanteProposta('${prop.id}')" style="width: 18px; height: 18px; accent-color: #333; cursor: pointer;">
+                                Interessante
+                            </label>
+                            <button type="button" class="btn-cat" onclick="leggiProposta('${prop.id}')">LEGGI</button>
+                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="scartaProposta('${prop.id}')">SCARTA</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Errore proposte:", e);
+                container.innerHTML = "<p>Errore nel caricamento delle proposte.</p>";
+            }
         }
 
         function leggiProposta(id) {
-            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
-            const prop = proposte.find(p => p.id === id);
+            const prop = proposteInMemoria.find(p => p.id === id);
             if (prop) {
                 document.getElementById("modale-titolo").innerText = prop.titolo;
                 document.getElementById("modale-info").innerText = `Proposto da: ${prop.autore} il ${prop.data}`;
@@ -549,28 +654,36 @@
             document.getElementById("modale-proposta").style.display = "none";
         }
 
-        function scartaProposta(id) {
+        async function scartaProposta(id) {
             if (confirm("Sei sicuro di voler scartare ed eliminare questa proposta?")) {
-                let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
-                proposte = proposte.filter(p => p.id !== id);
-                localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
-                caricaProposteRedazione();
+                try {
+                    await window.deleteDoc(window.doc(window.db, "proposte_articoli", id));
+                    await caricaProposteRedazione();
+                } catch (e) {
+                    console.error("Errore scarto proposta:", e);
+                    alert("Errore durante l'eliminazione.");
+                }
             }
         }
 
-        function toggleInteressanteProposta(id) {
-            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
-            const prop = proposte.find(p => p.id === id);
-            if (prop) {
-                prop.interessante = !prop.interessante;
-                localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
-                caricaProposteRedazione();
+        async function toggleInteressanteProposta(id) {
+            try {
+                const prop = proposteInMemoria.find(p => p.id === id);
+                if (prop) {
+                    const nuovoStato = !prop.interessante;
+                    await window.updateDoc(window.doc(window.db, "proposte_articoli", id), {
+                        interessante: nuovoStato
+                    });
+                    await caricaProposteRedazione();
+                }
+            } catch (e) {
+                console.error("Errore aggiornamento proposta:", e);
             }
         }
 
-        document.getElementById("form-articolo").addEventListener("submit", function(e) {
+        document.getElementById("form-articolo").addEventListener("submit", async function(e) {
             e.preventDefault();
-            const editIndex = parseInt(document.getElementById("edit-index").value);
+            const editId = document.getElementById("edit-id").value;
             const titolo = document.getElementById("titolo").value;
             const categoria = document.getElementById("categoria").value;
             const immagine = document.getElementById("immagine-base64").value;
@@ -581,32 +694,51 @@
                 return;
             }
 
-            let articoli = JSON.parse(JSON.stringify(JSON.parse(localStorage.getItem("miei_articoli")) || []));
             const data = new Date().toLocaleDateString();
 
-            if (editIndex === -1) {
-                articoli.unshift({ titolo, categoria, immagine, testo, data });
-                alert("Articolo pubblicato con successo!");
-            } else {
-                const immagineFinale = immagine || articoli[editIndex].immagine;
-                articoli[editIndex] = { titolo, categoria, immagine: immagineFinale, testo, data: articoli[editIndex].data };
-                alert("Articolo modificato con successo!");
-                annullaModifica();
-            }
+            try {
+                if (!editId) {
+                    // Nuovo articolo
+                    await window.addDoc(window.collection(window.db, "articoli"), {
+                        titolo,
+                        categoria,
+                        immagine,
+                        testo,
+                        data,
+                        timestamp: Date.now()
+                    });
+                    alert("Articolo pubblicato con successo su Firebase!");
+                } else {
+                    // Modifica articolo esistente
+                    const artEsistente = articoliInMemoria.find(a => a.id === editId);
+                    const immagineFinale = immagine || (artEsistente ? artEsistente.immagine : "");
+                    
+                    await window.updateDoc(window.doc(window.db, "articoli", editId), {
+                        titolo,
+                        categoria,
+                        immagine: immagineFinale,
+                        testo
+                    });
+                    alert("Articolo modificato con successo su Firebase!");
+                    annullaModifica();
+                }
 
-            localStorage.setItem("miei_articoli", JSON.stringify(articoli));
-            document.getElementById("form-articolo").reset();
-            document.getElementById("editor-testo").innerHTML = "";
-            document.getElementById("immagine-base64").value = "";
-            document.getElementById("preview-container").innerHTML = "";
-            caricaListaGestione();
+                document.getElementById("form-articolo").reset();
+                document.getElementById("editor-testo").innerHTML = "";
+                document.getElementById("immagine-base64").value = "";
+                document.getElementById("preview-container").innerHTML = "";
+                await caricaListaGestione();
+            } catch (err) {
+                console.error("Errore salvataggio articolo su Firestore:", err);
+                alert("Errore durante il salvataggio su Firebase.");
+            }
         });
 
-        function preparaModifica(index) {
-            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
-            const art = articoli[index];
+        function preparaModifica(id) {
+            const art = articoliInMemoria.find(a => a.id === id);
+            if (!art) return;
 
-            document.getElementById("edit-index").value = index;
+            document.getElementById("edit-id").value = art.id;
             document.getElementById("titolo").value = art.titolo;
             document.getElementById("categoria").value = art.categoria;
             document.getElementById("immagine-base64").value = art.immagine || "";
@@ -624,7 +756,7 @@
         }
 
         function annullaModifica() {
-            document.getElementById("edit-index").value = -1;
+            document.getElementById("edit-id").value = "";
             document.getElementById("form-articolo").reset();
             document.getElementById("editor-testo").innerHTML = "";
             document.getElementById("immagine-base64").value = "";
@@ -634,17 +766,20 @@
             document.getElementById("btn-annulla-modifica").style.display = "none";
         }
 
-        function eliminaArticolo(index) {
+        async function eliminaArticolo(id) {
             if (confirm("Sei sicuro di voler eliminare definitivamente questo articolo?")) {
-                let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
-                articoli.splice(index, 1);
-                localStorage.setItem("miei_articoli", JSON.stringify(articoli));
-                caricaListaGestione();
-                alert("Articolo eliminato.");
+                try {
+                    await window.deleteDoc(window.doc(window.db, "articoli", id));
+                    await caricaListaGestione();
+                    alert("Articolo eliminato da Firebase.");
+                } catch (e) {
+                    console.error("Errore eliminazione articolo:", e);
+                    alert("Errore durante l'eliminazione.");
+                }
             }
         }
 
-        document.getElementById("form-sondaggio").addEventListener("submit", function(e) {
+        document.getElementById("form-sondaggio").addEventListener("submit", async function(e) {
             e.preventDefault();
             const categoriaScelta = document.getElementById("categoria-sondaggio").value;
             const nuovoSondaggio = document.getElementById("input-sondaggio").value;
@@ -662,51 +797,84 @@
                 return;
             }
 
-            localStorage.setItem("categoria_sondaggio", categoriaScelta);
-            localStorage.setItem("topic_sondaggio", nuovoSondaggio);
-            localStorage.setItem("opzioni_sondaggio", JSON.stringify(opzioniArray));
-            
-            alert("Sondaggio e opzioni aggiornati con successo!");
+            try {
+                await window.setDoc(window.doc(window.db, "configurazioni", "sondaggio_attivo"), {
+                    categoria: categoriaScelta,
+                    domanda: nuovoSondaggio,
+                    opzioni: opzioniArray
+                });
+                alert("Sondaggio e opzioni aggiornati con successo su Firebase!");
+            } catch (e) {
+                console.error("Errore salvataggio sondaggio:", e);
+                alert("Errore durante il salvataggio.");
+            }
         });
 
-        function archiviaSondaggioCorrente() {
-            const domanda = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
-            const categoria = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
-            const opzioni = JSON.parse(localStorage.getItem("opzioni_sondaggio")) || ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
-            const votiMappa = JSON.parse(localStorage.getItem("voti_sondaggio")) || {};
-            const totaleVotanti = parseInt(localStorage.getItem("totale_votanti") || "0");
+        async function archiviaSondaggioCorrente() {
+            const domanda = document.getElementById("input-sondaggio").value;
+            const categoria = document.getElementById("categoria-sondaggio").value;
+            const inputsOpzioni = document.querySelectorAll(".input-opzione");
+            let opzioni = [];
+            inputsOpzioni.forEach(i => { if(i.value.trim()) opzioni.push(i.value.trim()); });
 
-            const sondaggioArchiviato = {
-                categoria,
-                domanda,
-                opzioni,
-                votiMappa,
-                totaleVotanti,
-                dataArchiviazione: new Date().toLocaleDateString()
-            };
+            try {
+                // Recupera voti del sondaggio attivo
+                const votoDocSnap = await window.getDocs(window.collection(window.db, "voti_sondaggio_attivo"));
+                let votiMappa = {};
+                let totaleVotanti = 0;
+                
+                votoDocSnap.forEach(d => {
+                    const data = d.data();
+                    votiMappa[data.opzione] = data.conteggio || 0;
+                    totaleVotanti += (data.conteggio || 0);
+                });
 
-            let archivioSondaggi = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
-            archivioSondaggi.unshift(sondaggioArchiviato);
-            localStorage.setItem("archivio_sondaggi", JSON.stringify(archivioSondaggi));
+                const sondaggioArchiviato = {
+                    categoria,
+                    domanda,
+                    opzioni,
+                    votiMappa,
+                    totaleVotanti,
+                    dataArchiviazione: new Date().toLocaleDateString(),
+                    timestamp: Date.now()
+                };
 
-            localStorage.removeItem("voti_sondaggio");
-            localStorage.removeItem("totale_votanti");
-            localStorage.removeItem("utente_ha_votato");
+                await window.addDoc(window.collection(window.db, "sondaggi_archiviati"), sondaggioArchiviato);
 
-            alert("Sondaggio archiviato con successo! Ora puoi impostare un nuovo sondaggio attivo.");
-            caricaListaSondaggiArchiviati();
+                // Pulisci i voti attivi su Firestore
+                for (const d of votoDocSnap.docs) {
+                    await window.deleteDoc(d.ref);
+                }
+
+                alert("Sondaggio archiviato con successo su Firebase!");
+                await caricaListaSondaggiArchiviati();
+            } catch (e) {
+                console.error("Errore archiviazione sondaggio:", e);
+                alert("Errore durante l'archiviazione.");
+            }
         }
 
-        document.getElementById("form-discussione").addEventListener("submit", function(e) {
+        document.getElementById("form-discussione").addEventListener("submit", async function(e) {
             e.preventDefault();
             const nuovaDiscussione = document.getElementById("input-discussione").value;
-            localStorage.setItem("topic_discussione", nuovaDiscussione);
-            
-            localStorage.removeItem("commenti_agora");
-            localStorage.removeItem("like_miei_commenti");
 
-            alert("Discussione aggiornata con successo! Tutti i vecchi commenti sono stati cancellati.");
-            caricaListaCommentiRedazione();
+            try {
+                await window.setDoc(window.doc(window.db, "configurazioni", "discussione_attiva"), {
+                    argomento: nuovaDiscussione
+                });
+
+                // Cancella i vecchi commenti all'cambio di argomento
+                const commentiSnap = await window.getDocs(window.collection(window.db, "commenti_agora"));
+                for (const d of commentiSnap.docs) {
+                    await window.deleteDoc(d.ref);
+                }
+
+                alert("Discussione aggiornata con successo su Firebase! I vecchi commenti sono stati azzerati.");
+                await caricaListaCommentiRedazione();
+            } catch (e) {
+                console.error("Errore salvataggio discussione:", e);
+                alert("Errore durante l'aggiornamento.");
+            }
         });
     </script>
 </body>

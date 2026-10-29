@@ -6,18 +6,32 @@
     <title>Vota - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Configurazione Firebase -->
+    <!-- Configurazione Firebase e Firestore -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-        projectId: "flusso-di-coscienza-4e96d",
-        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-        messagingSenderId: "617712339143",
-        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-      };
-      const app = initializeApp(firebaseConfig);
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+        window.addDoc = addDoc;
+
+        window.dispatchEvent(new Event('firebase-ready'));
     </script>
 
     <style>
@@ -166,9 +180,9 @@
         <!-- Sondaggio Principale -->
         <div class="form-container">
             <div style="margin-bottom: 12px;">
-                <span id="categoria-badge" class="categoria" style="font-size: 0.85rem;"></span>
+                <span id="categoria-badge" class="categoria" style="font-size: 0.85rem;">ATTUALITA'</span>
             </div>
-            <h2 id="titolo-sondaggio" style="margin: 0 0 20px 0; font-size: 1.8rem; text-align: justify;">Topic del Mese</h2>
+            <h2 id="titolo-sondaggio" style="margin: 0 0 20px 0; font-size: 1.8rem; text-align: justify;">Caricamento sondaggio...</h2>
             
             <form id="sondaggio-form">
                 <div id="opzioni-container" style="margin-top: 15px;"></div>
@@ -207,7 +221,12 @@
             }
         });
 
-        document.addEventListener("DOMContentLoaded", () => {
+        window.addEventListener("firebase-ready", async () => {
+            await caricaSondaggioDaFirebase();
+            await caricaSondaggiArchiviatiDaFirebase();
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
             const h1Element = document.getElementById("titolo-dinamico");
@@ -221,8 +240,10 @@
                 }
             }
 
-            caricaSondaggio();
-            caricaSondaggiArchiviati();
+            if (window.db) {
+                await caricaSondaggioDaFirebase();
+                await caricaSondaggiArchiviatiDaFirebase();
+            }
         });
 
         function getCategoriaClasse(categoria) {
@@ -244,148 +265,197 @@
             return mapping[categoria] || "cat-filosofia";
         }
 
-        function caricaSondaggio() {
-            const categoria = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
-            const badge = document.getElementById("categoria-badge");
-            badge.innerText = categoria;
-            badge.className = `categoria ${getCategoriaClasse(categoria)}`;
+        async function caricaSondaggioDaFirebase() {
+            try {
+                const docSnap = await window.getDoc(window.doc(window.db, "configurazioni", "sondaggio_attivo"));
+                let categoria = "ATTUALITA'";
+                let domanda = "L'intelligenza artificiale sostituirà il pensiero critico umano?";
+                let opzioni = ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
 
-            const domanda = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
-            document.getElementById("titolo-sondaggio").innerText = domanda;
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.categoria) categoria = data.categoria;
+                    if (data.domanda) domanda = data.domanda;
+                    if (data.opzioni) opzioni = data.opzioni;
+                }
 
-            let opzioni = JSON.parse(localStorage.getItem("opzioni_sondaggio"));
-            if (!opzioni) {
-                opzioni = ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
-            }
+                const badge = document.getElementById("categoria-badge");
+                badge.innerText = categoria;
+                badge.className = `categoria ${getCategoriaClasse(categoria)}`;
+                document.getElementById("titolo-sondaggio").innerText = domanda;
 
-            const container = document.getElementById("opzioni-container");
-            container.innerHTML = "";
+                // Gestione ID utente unico per Firestore
+                let userId = localStorage.getItem("firebase_user_id");
+                if (!userId) {
+                    userId = 'user_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+                    localStorage.setItem("firebase_user_id", userId);
+                }
 
-            const haVotato = localStorage.getItem("utente_ha_votato") === "true";
+                // Verifica se l'utente ha già votato questo sondaggio su Firestore
+                const votoUserSnap = await window.getDoc(window.doc(window.db, "voti_utenti_sondaggio", userId));
+                const haVotato = votoUserSnap.exists();
 
-            if (haVotato) {
-                document.getElementById("sondaggio-form").style.display = "none";
-                mostraRisultati(opzioni);
-            } else {
-                opzioni.forEach((opt, index) => {
-                    const card = document.createElement("div");
-                    card.className = "opzione-card";
-                    card.innerHTML = `
-                        <input type="radio" name="voto" id="opt_${index}" value="${opt}" required>
-                        <label for="opt_${index}">${opt}</label>
-                    `;
-                    card.addEventListener("click", (e) => {
-                        if(e.target.tagName !== 'INPUT') {
-                            document.getElementById(`opt_${index}`).checked = true;
+                const container = document.getElementById("opzioni-container");
+                container.innerHTML = "";
+
+                if (haVotato) {
+                    document.getElementById("sondaggio-form").style.display = "none";
+                    await mostraRisultatiFirebase(opzioni);
+                } else {
+                    opzioni.forEach((opt, index) => {
+                        const card = document.createElement("div");
+                        card.className = "opzione-card";
+                        card.innerHTML = `
+                            <input type="radio" name="voto" id="opt_${index}" value="${opt}" required>
+                            <label for="opt_${index}">${opt}</label>
+                        `;
+                        card.addEventListener("click", (e) => {
+                            if(e.target.tagName !== 'INPUT') {
+                                document.getElementById(`opt_${index}`).checked = true;
+                            }
+                        });
+                        container.appendChild(card);
+                    });
+
+                    const form = document.getElementById("sondaggio-form");
+                    form.replaceWith(form.cloneNode(true));
+                    document.getElementById("sondaggio-form").addEventListener("submit", async function(e) {
+                        e.preventDefault();
+                        const votoSelezionato = document.querySelector('input[name="voto"]:checked');
+                        
+                        if (!votoSelezionato) {
+                            alert("Seleziona un'opzione prima di votare!");
+                            return;
+                        }
+
+                        const valoreVoto = votoSelezionato.value;
+
+                        try {
+                            // Registra che l'utente ha votato
+                            await window.setDoc(window.doc(window.db, "voti_utenti_sondaggio", userId), { opzioneScelta: valoreVoto });
+
+                            // Aggiorna il contatore dell'opzione su Firestore
+                            const opzioneDocRef = window.doc(window.db, "voti_sondaggio_attivo", valoreVoto);
+                            const opzioneSnap = await window.getDoc(opzioneDocRef);
+                            
+                            let conteggioAttuale = 0;
+                            if (opzioneSnap.exists()) {
+                                conteggioAttuale = opzioneSnap.data().conteggio || 0;
+                            }
+
+                            await window.setDoc(opzioneDocRef, { opzione: valoreVoto, conteggio: conteggioAttuale + 1 });
+
+                            alert("Grazie per aver votato! Il tuo pensiero è stato registrato nel cloud.");
+                            location.reload();
+                        } catch (err) {
+                            console.error("Errore invio voto su Firestore:", err);
+                            alert("Errore durante la registrazione del voto.");
                         }
                     });
-                    container.appendChild(card);
-                });
+                }
+            } catch (err) {
+                console.error("Errore caricamento sondaggio:", err);
             }
         }
 
-        document.getElementById("sondaggio-form").addEventListener("submit", function(e) {
-            e.preventDefault();
-            const votoSelezionato = document.querySelector('input[name="voto"]:checked');
-            
-            if (!votoSelezionato) {
-                alert("Seleziona un'opzione prima di votare!");
-                return;
-            }
-
-            const valoreVoto = votoSelezionato.value;
-
-            let votiMappa = JSON.parse(localStorage.getItem("voti_sondaggio")) || {};
-            votiMappa[valoreVoto] = (votiMappa[valoreVoto] || 0) + 1;
-            
-            let totaleVotanti = parseInt(localStorage.getItem("totale_votanti") || "0") + 1;
-
-            localStorage.setItem("voti_sondaggio", JSON.stringify(votiMappa));
-            localStorage.setItem("totale_votanti", totaleVotanti);
-            localStorage.setItem("utente_ha_votato", "true");
-
-            alert("Grazie per aver votato! Il tuo pensiero è stato registrato.");
-            location.reload();
-        });
-
-        function mostraRisultati(opzioni) {
+        async function mostraRisultatiFirebase(opzioni) {
             const areaRisultati = document.getElementById("area-risultati");
             const graficoContainer = document.getElementById("grafico-risultati");
             const etichettaTotale = document.getElementById("totale-votanti");
 
-            let votiMappa = JSON.parse(localStorage.getItem("voti_sondaggio")) || {};
-            let totaleVotanti = parseInt(localStorage.getItem("totale_votanti") || "0");
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "voti_sondaggio_attivo"));
+                let votiMappa = {};
+                let totaleVotanti = 0;
 
-            graficoContainer.innerHTML = "";
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    votiMappa[data.opzione] = data.conteggio || 0;
+                    totaleVotanti += (data.conteggio || 0);
+                });
 
-            opzioni.forEach(opt => {
-                let votiOpzione = votiMappa[opt] || 0;
-                let percentuale = totaleVotanti > 0 ? ((votiOpzione / totaleVotanti) * 100).toFixed(1) : 0;
+                graficoContainer.innerHTML = "";
 
-                const div = document.createElement("div");
-                div.className = "risultato-barra-container";
-                div.innerHTML = `
-                    <div class="risultato-info">
-                        <span>${opt}</span>
-                        <span>${percentuale}% (${votiOpzione} voti)</span>
-                    </div>
-                    <div class="barra-esterna">
-                        <div class="barra-interna" style="width: ${percentuale}%;"></div>
-                    </div>
-                `;
-                graficoContainer.appendChild(div);
-            });
+                opzioni.forEach(opt => {
+                    let votiOpzione = votiMappa[opt] || 0;
+                    let percentuale = totaleVotanti > 0 ? ((votiOpzione / totaleVotanti) * 100).toFixed(1) : 0;
 
-            etichettaTotale.innerText = `Numero totale partecipanti: ${totaleVotanti}`;
-            areaRisultati.style.display = "block";
+                    const div = document.createElement("div");
+                    div.className = "risultato-barra-container";
+                    div.innerHTML = `
+                        <div class="risultato-info">
+                            <span>${opt}</span>
+                            <span>${percentuale}% (${votiOpzione} voti)</span>
+                        </div>
+                        <div class="barra-esterna">
+                            <div class="barra-interna" style="width: ${percentuale}%;"></div>
+                        </div>
+                    `;
+                    graficoContainer.appendChild(div);
+                });
+
+                etichettaTotale.innerText = `Numero totale partecipanti: ${totaleVotanti}`;
+                areaRisultati.style.display = "block";
+            } catch (err) {
+                console.error("Errore caricamento risultati:", err);
+            }
         }
 
-        function caricaSondaggiArchiviati() {
-            const archivio = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
+        async function caricaSondaggiArchiviatiDaFirebase() {
             const sezione = document.getElementById("sezione-archivio-sondaggi");
             const wrapper = document.getElementById("carosello-sondaggi-wrapper");
 
-            if (archivio.length === 0) {
-                sezione.style.display = "none";
-                return;
-            }
-
-            sezione.style.display = "block";
-            wrapper.innerHTML = "";
-
-            archivio.forEach(sondaggio => {
-                const card = document.createElement("div");
-                card.className = "sondaggio-card-archivio";
-                const classeCat = getCategoriaClasse(sondaggio.categoria);
-
-                let barreHTML = "";
-                sondaggio.opzioni.forEach(opt => {
-                    let votiOpt = sondaggio.votiMappa[opt] || 0;
-                    let perc = sondaggio.totaleVotanti > 0 ? ((votiOpt / sondaggio.totaleVotanti) * 100).toFixed(1) : 0;
-                    barreHTML += `
-                        <div class="risultato-barra-container">
-                            <div class="risultato-info">
-                                <span>${opt}</span>
-                                <span>${perc}% (${votiOpt} voti)</span>
-                            </div>
-                            <div class="barra-esterna">
-                                <div class="barra-interna" style="width: ${perc}%;"></div>
-                            </div>
-                        </div>
-                    `;
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "sondaggi_archiviati"));
+                let archivio = [];
+                querySnapshot.forEach(docSnap => {
+                    archivio.push({ id: docSnap.id, ...docSnap.data() });
                 });
 
-                card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span class="categoria ${classeCat}" style="font-size: 0.8rem;">${sondaggio.categoria}</span>
-                        <small style="color: #666;">Archiviato il: ${sondaggio.dataArchiviazione}</small>
-                    </div>
-                    <h3 style="margin-bottom: 20px; font-size: 1.15rem; color: #111; text-align: justify;">${sondaggio.domanda}</h3>
-                    <div>${barreHTML}</div>
-                    <p style="margin-top: 15px; font-size: 0.9rem; color: #555; text-align: right;">Numero totale partecipanti: ${sondaggio.totaleVotanti}</p>
-                `;
-                wrapper.appendChild(card);
-            });
+                if (archivio.length === 0) {
+                    sezione.style.display = "none";
+                    return;
+                }
+
+                sezione.style.display = "block";
+                wrapper.innerHTML = "";
+
+                archivio.forEach(sondaggio => {
+                    const card = document.createElement("div");
+                    card.className = "sondaggio-card-archivio";
+                    const classeCat = getCategoriaClasse(sondaggio.categoria);
+
+                    let barreHTML = "";
+                    sondaggio.opzioni.forEach(opt => {
+                        let votiOpt = (sondaggio.votiMappa && sondaggio.votiMappa[opt]) ? sondaggio.votiMappa[opt] : 0;
+                        let perc = sondaggio.totaleVotanti > 0 ? ((votiOpt / sondaggio.totaleVotanti) * 100).toFixed(1) : 0;
+                        barreHTML += `
+                            <div class="risultato-barra-container">
+                                <div class="risultato-info">
+                                    <span>${opt}</span>
+                                    <span>${perc}% (${votiOpt} voti)</span>
+                                </div>
+                                <div class="barra-esterna">
+                                    <div class="barra-interna" style="width: ${perc}%;"></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span class="categoria ${classeCat}" style="font-size: 0.8rem;">${sondaggio.categoria}</span>
+                            <small style="color: #666;">Archiviato il: ${sondaggio.dataArchiviazione}</small>
+                        </div>
+                        <h3 style="margin-bottom: 20px; font-size: 1.15rem; color: #111; text-align: justify;">${sondaggio.domanda}</h3>
+                        <div>${barreHTML}</div>
+                        <p style="margin-top: 15px; font-size: 0.9rem; color: #555; text-align: right;">Numero totale partecipanti: ${sondaggio.totaleVotanti || 0}</p>
+                    `;
+                    wrapper.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Errore caricamento sondaggi archiviati:", err);
+            }
         }
 
         function scorriCarosello(direzione) {

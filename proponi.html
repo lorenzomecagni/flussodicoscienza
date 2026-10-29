@@ -6,18 +6,28 @@
     <title>Proponi Articolo - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Configurazione Firebase -->
+    <!-- Configurazione Firebase e Firestore -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-        projectId: "flusso-di-coscienza-4e96d",
-        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-        messagingSenderId: "617712339143",
-        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-      };
-      const app = initializeApp(firebaseConfig);
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+
+        window.dispatchEvent(new Event('firebase-ready'));
     </script>
 </head>
 <body>
@@ -96,28 +106,33 @@
             }
         });
 
-        document.getElementById("proposta-form").addEventListener("submit", function(e) {
+        document.getElementById("proposta-form").addEventListener("submit", async function(e) {
             e.preventDefault();
             const autore = document.getElementById("autore").value.trim();
             const titolo = document.getElementById("titolo-prop").value.trim();
             const testo = document.getElementById("testo-prop").value.trim();
 
-            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
+            if (!window.db) {
+                alert("Connessione a Firebase non ancora pronta. Riprova tra un secondo.");
+                return;
+            }
 
-            const nuovaProposta = {
-                id: Date.now(),
-                autore,
-                titolo,
-                testo,
-                data: new Date().toLocaleDateString(),
-                interessante: false
-            };
+            try {
+                await window.addDoc(window.collection(window.db, "proposte_articoli"), {
+                    autore,
+                    titolo,
+                    testo,
+                    data: new Date().toLocaleDateString(),
+                    interessante: false,
+                    timestamp: Date.now()
+                });
 
-            proposte.push(nuovaProposta);
-            localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
-
-            alert("Articolo inviato con successo! La redazione lo esaminerà presto.");
-            window.location.href = "index.html";
+                alert("Articolo inviato con successo alla redazione tramite cloud!");
+                window.location.href = "index.html";
+            } catch (err) {
+                console.error("Errore invio proposta su Firestore:", err);
+                alert("Errore durante l'invio della proposta.");
+            }
         });
     </script>
 </body>

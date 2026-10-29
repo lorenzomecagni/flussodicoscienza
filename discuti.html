@@ -6,18 +6,32 @@
     <title>Discuti - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Configurazione Firebase -->
+    <!-- Configurazione Firebase e Firestore -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-        projectId: "flusso-di-coscienza-4e96d",
-        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-        messagingSenderId: "617712339143",
-        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-      };
-      const app = initializeApp(firebaseConfig);
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.getDoc = getDoc;
+
+        window.dispatchEvent(new Event('firebase-ready'));
     </script>
 
     <style>
@@ -108,16 +122,18 @@
 
     <main class="container">
         <div class="form-container">
-            <h2 id="titolo-dibattito" style="text-align: justify;">Dibattito del Mese</h2>
+            <h2 id="titolo-dibattito" style="text-align: justify;">Caricamento dibattito...</h2>
             <p>Lascia un commento o un pensiero libero in risposta al dibattito mensile.</p>
             
             <div class="form-group" style="margin-top: 25px;">
                 <input type="text" id="autore-commento" placeholder="Il tuo nome..." style="margin-bottom: 12px;">
                 <textarea id="testo-commento" rows="4" placeholder="Esprimi il tuo pensiero..."></textarea>
-                <button type="button" class="btn-pubblica" onclick="aggiungiCommento()" style="margin-top: 15px;">Pubblica Intervento</button>
+                <button type="button" class="btn-pubblica" onclick="aggiungiCommentoFirebase()" style="margin-top: 15px;">Pubblica Intervento</button>
             </div>
 
-            <div id="lista-commenti" style="margin-top: 30px;"></div>
+            <div id="lista-commenti" style="margin-top: 30px;">
+                <p>Caricamento interventi...</p>
+            </div>
         </div>
     </main>
 
@@ -131,7 +147,11 @@
             }
         });
 
-        document.addEventListener("DOMContentLoaded", () => {
+        window.addEventListener("firebase-ready", async () => {
+            await inizializzaPaginaDiscussione();
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
             const h1Element = document.getElementById("titolo-dinamico");
@@ -145,13 +165,27 @@
                 }
             }
 
-            const topicDibattito = localStorage.getItem("topic_discussione") || "Dibattito del Mese";
-            document.getElementById("titolo-dibattito").innerText = topicDibattito;
-
-            caricaCommenti();
+            if (window.db) {
+                await inizializzaPaginaDiscussione();
+            }
         });
 
-        function aggiungiCommento() {
+        async function inizializzaPaginaDiscussione() {
+            try {
+                const docSnap = await window.getDoc(window.doc(window.db, "configurazioni", "discussione_attiva"));
+                let topicDibattito = "Dibattito del Mese";
+                if (docSnap.exists() && docSnap.data().argomento) {
+                    topicDibattito = docSnap.data().argomento;
+                }
+                document.getElementById("titolo-dibattito").innerText = topicDibattito;
+
+                await caricaCommentiFirebase();
+            } catch (err) {
+                console.error("Errore inizializzazione discussione:", err);
+            }
+        }
+
+        async function aggiungiCommentoFirebase() {
             const autore = document.getElementById("autore-commento").value.trim() || "Anonimo";
             const testo = document.getElementById("testo-commento").value.trim();
             if(!testo) {
@@ -159,110 +193,136 @@
                 return;
             }
 
-            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+            try {
+                await window.addDoc(window.collection(window.db, "commenti_agora"), {
+                    autore,
+                    testo,
+                    data: new Date().toLocaleDateString(),
+                    likes: 0,
+                    utentiCheHannoMessoLike: [],
+                    risposte: [],
+                    timestamp: Date.now()
+                });
 
-            const nuovoCommento = {
-                id: Date.now(),
-                autore,
-                testo,
-                data: new Date().toLocaleDateString(),
-                likes: 0,
-                risposte: []
-            };
+                document.getElementById("testo-commento").value = "";
+                document.getElementById("autore-commento").value = "";
 
-            commenti.unshift(nuovoCommento);
-            localStorage.setItem("commenti_agora", JSON.stringify(commenti));
-
-            document.getElementById("testo-commento").value = "";
-            document.getElementById("autore-commento").value = "";
-
-            caricaCommenti();
+                await caricaCommentiFirebase();
+                alert("Intervento pubblicato con successo nel cloud!");
+            } catch (e) {
+                console.error("Errore aggiunta commento:", e);
+                alert("Errore durante la pubblicazione.");
+            }
         }
 
-        function caricaCommenti() {
+        async function caricaCommentiFirebase() {
             const lista = document.getElementById("lista-commenti");
-            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-            let mieiLikes = JSON.parse(localStorage.getItem("like_miei_commenti")) || [];
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "commenti_agora"));
+                let commenti = [];
+                querySnapshot.forEach(docSnap => {
+                    commenti.push({ id: docSnap.id, ...docSnap.data() });
+                });
 
-            commenti.sort((a, b) => b.likes - a.likes);
+                commenti.sort((a, b) => (b.likes || 0) - (a.likes || 0));
 
-            lista.innerHTML = "";
+                lista.innerHTML = "";
 
-            if (commenti.length === 0) {
-                lista.innerHTML = "<p style='color: #666; font-style: italic;'>Nessun intervento ancora. Sii il primo a esprimere il tuo pensiero!</p>";
-                return;
-            }
-
-            commenti.forEach(com => {
-                const giaMessoLike = mieiLikes.includes(com.id);
-
-                let risposteHtml = "";
-                if (com.risposte && com.risposte.length > 0) {
-                    com.risposte.forEach(resp => {
-                        risposteHtml += `
-                            <div class="risposta-card">
-                                <strong>${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
-                                <p style="margin-top:6px; line-height:1.4; color:#333; text-align: justify; word-break: break-word;">${resp.testo}</p>
-                            </div>
-                        `;
-                    });
+                if (commenti.length === 0) {
+                    lista.innerHTML = "<p style='color: #666; font-style: italic;'>Nessun intervento ancora. Sii il primo a esprimere il tuo pensiero!</p>";
+                    return;
                 }
 
-                const div = document.createElement("div");
-                div.className = "commento-card";
-                div.innerHTML = `
-                    <div class="commento-header">
-                        <div>
-                            <strong>${com.autore}</strong> 
-                            <small style="color:#666;">(${com.data})</small>
-                        </div>
-                        <button type="button" class="btn-like ${giaMessoLike ? 'liked' : ''}" onclick="toggleLike(${com.id})">
-                            ❤️ <span>${com.likes}</span>
-                        </button>
-                    </div>
-                    <p style="margin-top:10px; line-height:1.6; color:#222;">${com.testo}</p>
-                    
-                    <div style="margin-top: 12px;">
-                        <button type="button" class="btn-cat" style="font-size: 0.85rem; padding: 6px 12px;" onclick="mostraFormRisposta(${com.id})">Rispondi</button>
-                    </div>
+                let userId = localStorage.getItem("firebase_user_id");
+                if (!userId) {
+                    userId = 'user_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+                    localStorage.setItem("firebase_user_id", userId);
+                }
 
-                    <div id="form-risposta-${com.id}" class="box-rispondi" style="display: none;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <input type="text" id="autore-risposta-${com.id}" placeholder="Il tuo nome..." style="margin-bottom: 10px;">
-                            <textarea id="testo-risposta-${com.id}" rows="3" placeholder="Scrivi una risposta..."></textarea>
-                            <button type="button" class="btn-pubblica" style="margin-top: 12px; width: auto; padding: 10px 20px;" onclick="inviaRisposta(${com.id})">Invia Risposta</button>
-                        </div>
-                    </div>
+                commenti.forEach(com => {
+                    const utentiLikes = com.utentiCheHannoMessoLike || [];
+                    const giaMessoLike = utentiLikes.includes(userId);
 
-                    <div style="margin-top: 12px; padding-left: 20px; border-left: 2px solid #d4cbb8;">
-                        ${risposteHtml}
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
+                    let risposteHtml = "";
+                    if (com.risposte && com.risposte.length > 0) {
+                        com.risposte.forEach(resp => {
+                            risposteHtml += `
+                                <div class="risposta-card">
+                                    <strong>${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
+                                    <p style="margin-top:6px; line-height:1.4; color:#333; text-align: justify; word-break: break-word;">${resp.testo}</p>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    const div = document.createElement("div");
+                    div.className = "commento-card";
+                    div.innerHTML = `
+                        <div class="commento-header">
+                            <div>
+                                <strong>${com.autore}</strong> 
+                                <small style="color:#666;">(${com.data})</small>
+                            </div>
+                            <button type="button" class="btn-like ${giaMessoLike ? 'liked' : ''}" onclick="toggleLikeFirebase('${com.id}')">
+                                ❤️ <span>${com.likes || 0}</span>
+                            </button>
+                        </div>
+                        <p style="margin-top:10px; line-height:1.6; color:#222;">${com.testo}</p>
+                        
+                        <div style="margin-top: 12px;">
+                            <button type="button" class="btn-cat" style="font-size: 0.85rem; padding: 6px 12px;" onclick="mostraFormRisposta('${com.id}')">Rispondi</button>
+                        </div>
+
+                        <div id="form-risposta-${com.id}" class="box-rispondi" style="display: none;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <input type="text" id="autore-risposta-${com.id}" placeholder="Il tuo nome..." style="margin-bottom: 10px;">
+                                <textarea id="testo-risposta-${com.id}" rows="3" placeholder="Scrivi una risposta..."></textarea>
+                                <button type="button" class="btn-pubblica" style="margin-top: 12px; width: auto; padding: 10px 20px;" onclick="inviaRispostaFirebase('${com.id}')">Invia Risposta</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 12px; padding-left: 20px; border-left: 2px solid #d4cbb8;">
+                            ${risposteHtml}
+                        </div>
+                    `;
+                    lista.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Errore caricamento commenti:", err);
+                lista.innerHTML = "<p>Errore nel caricamento dei commenti da Firebase.</p>";
+            }
         }
 
-        function toggleLike(id) {
-            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-            let mieiLikes = JSON.parse(localStorage.getItem("like_miei_commenti")) || [];
+        async function toggleLikeFirebase(id) {
+            let userId = localStorage.getItem("firebase_user_id");
+            try {
+                const commentoRef = window.doc(window.db, "commenti_agora", id);
+                const docSnap = await window.getDoc(commentoRef);
+                if (!docSnap.exists()) return;
 
-            const index = commenti.findIndex(c => c.id === id);
-            if (index === -1) return;
+                const comData = docSnap.data();
+                let likes = comData.likes || 0;
+                let utentiLikes = comData.utentiCheHannoMessoLike || [];
 
-            const haGiaVotato = mieiLikes.includes(id);
+                const giaMessoLike = utentiLikes.includes(userId);
 
-            if (haGiaVotato) {
-                commenti[index].likes -= 1;
-                mieiLikes = mieiLikes.filter(likeId => likeId !== id);
-            } else {
-                commenti[index].likes += 1;
-                mieiLikes.push(id);
+                if (giaMessoLike) {
+                    likes -= 1;
+                    utentiLikes = utentiLikes.filter(u => u !== userId);
+                } else {
+                    likes += 1;
+                    utentiLikes.push(userId);
+                }
+
+                await window.updateDoc(commentoRef, {
+                    likes: likes,
+                    utentiCheHannoMessoLike: utentiLikes
+                });
+
+                await caricaCommentiFirebase();
+            } catch (err) {
+                console.error("Errore toggle like:", err);
             }
-
-            localStorage.setItem("commenti_agora", JSON.stringify(commenti));
-            localStorage.setItem("like_miei_commenti", JSON.stringify(mieiLikes));
-
-            caricaCommenti();
         }
 
         function mostraFormRisposta(id) {
@@ -274,7 +334,7 @@
             }
         }
 
-        function inviaRisposta(commentoId) {
+        async function inviaRispostaFirebase(commentoId) {
             const autore = document.getElementById(`autore-risposta-${commentoId}`).value.trim() || "Anonimo";
             const testo = document.getElementById(`testo-risposta-${commentoId}`).value.trim();
 
@@ -283,23 +343,29 @@
                 return;
             }
 
-            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
-            const commento = commenti.find(c => c.id === commentoId);
+            try {
+                const commentoRef = window.doc(window.db, "commenti_agora", commentoId);
+                const docSnap = await window.getDoc(commentoRef);
+                if (!docSnap.exists()) return;
 
-            if (commento) {
-                if (!commento.risposte) {
-                    commento.risposte = [];
-                }
+                const comData = docSnap.data();
+                let risposte = comData.risposte || [];
 
-                commento.risposte.push({
+                risposte.push({
                     id: Date.now(),
                     autore,
                     testo,
                     data: new Date().toLocaleDateString()
                 });
 
-                localStorage.setItem("commenti_agora", JSON.stringify(commenti));
-                caricaCommenti();
+                await window.updateDoc(commentoRef, {
+                    risposte: risposte
+                });
+
+                await caricaCommentiFirebase();
+            } catch (err) {
+                console.error("Errore invio risposta:", err);
+                alert("Errore durante l'invio della risposta.");
             }
         }
     </script>

@@ -6,18 +6,31 @@
     <title>Leggi Tutti - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Configurazione Firebase -->
+    <!-- Configurazione Firebase e Firestore -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-        projectId: "flusso-di-coscienza-4e96d",
-        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-        messagingSenderId: "617712339143",
-        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-      };
-      const app = initializeApp(firebaseConfig);
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+
+        window.dispatchEvent(new Event('firebase-ready'));
     </script>
 
     <style>
@@ -160,7 +173,9 @@
             </svg>
             Articoli
         </h2>
-        <div id="lista-completa" class="articoli-grid"></div>
+        <div id="lista-completa" class="articoli-grid">
+            <p>Caricamento articoli da Firebase...</p>
+        </div>
     </main>
 
     <script>
@@ -173,7 +188,11 @@
             }
         });
 
-        document.addEventListener("DOMContentLoaded", () => {
+        window.addEventListener("firebase-ready", async () => {
+            await caricaArticoliEValutazioni();
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
             const h1Element = document.getElementById("titolo-dinamico");
@@ -187,117 +206,148 @@
                 }
             }
 
-            function getCategoriaInfo(categoria) {
-                const mapping = {
-                    "ATTUALITA'": { classe: "cat-attualita", img: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800" },
-                    "POLITICA": { classe: "cat-politica", img: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800" },
-                    "SCIENZA": { classe: "cat-scienza", img: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800" },
-                    "RELIGIONE": { classe: "cat-religione", img: "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800" },
-                    "ECONOMIA": { classe: "cat-economia", img: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800" },
-                    "ARTE": { classe: "cat-arte", img: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800" },
-                    "FILOSOFIA": { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=800" },
-                    "LETTERATURA": { classe: "cat-letteratura", img: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=800" },
-                    "MUSICA": { classe: "cat-musica", img: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800" },
-                    "VIAGGI": { classe: "cat-viaggi", img: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800" },
-                    "STORIA": { classe: "cat-storia", img: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=800" },
-                    "CINEMA": { classe: "cat-cinema", img: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800" },
-                    "VIDEOGIOCHI": { classe: "cat-videogiochi", img: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800" }
-                };
-                return mapping[categoria] || { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800" };
+            if (window.db) {
+                await caricaArticoliEValutazioni();
             }
-
-            const container = document.getElementById("lista-completa");
-            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
-            container.innerHTML = "";
-            
-            if(articoli.length === 0) {
-                container.innerHTML = "<p>Nessun articolo presente al momento.</p>";
-                return;
-            }
-
-            let archivioVoti = JSON.parse(localStorage.getItem("archivio_voti_articoli")) || {};
-            let vecchieValutazioni = JSON.parse(localStorage.getItem("valutazioni_articoli")) || {};
-            for (let k in vecchieValutazioni) {
-                if (!archivioVoti[k]) {
-                    archivioVoti[k] = { "Lettore_Locale": vecchieValutazioni[k] };
-                }
-            }
-
-            function calcolaMediaVoti(key) {
-                const votiMap = archivioVoti[key];
-                if (!votiMap || Object.keys(votiMap).length === 0) return { media: "N.D.", conteggio: 0 };
-                let valori = Object.values(votiMap);
-                let somma = valori.reduce((acc, val) => acc + val, 0);
-                let media = (somma / valori.length).toFixed(1);
-                return { media: media, conteggio: valori.length };
-            }
-
-            articoli.forEach((articolo, index) => {
-                const card = document.createElement("article");
-                card.id = `articolo-${index}`;
-                card.className = "card-articolo";
-                const info = getCategoriaInfo(articolo.categoria);
-                const immagineSrc = articolo.immagine ? articolo.immagine : info.img;
-
-                const articleKey = `art_${index}_${articolo.titolo.replace(/\s+/g, '_')}`;
-                
-                let votoPersonale = 5;
-                if (archivioVoti[articleKey] && archivioVoti[articleKey]["Lettore_Locale"] !== undefined) {
-                    votoPersonale = archivioVoti[articleKey]["Lettore_Locale"];
-                }
-
-                const infoMedia = calcolaMediaVoti(articleKey);
-
-                card.innerHTML = `
-                    <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate">
-                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                        <span id="testo-badge-${index}">${infoMedia.media}</span> <small style="opacity:0.8">(${infoMedia.conteggio})</small>
-                    </div>
-
-                    <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img">
-                    <div class="card-contenuto">
-                        <span class="categoria ${info.classe}">${articolo.categoria}</span>
-                        <h3>${articolo.titolo}</h3>
-                        <small>Pubblicato il: ${articolo.data}</small>
-                        <div class="testo-articolo">${articolo.testo}</div>
-                        
-                        <div class="valutazione-box">
-                            <div class="valutazione-header">
-                                <span>Valuta questo articolo:</span>
-                                <strong id="valore-voto-${index}">${votoPersonale} / 10</strong>
-                            </div>
-                            <input type="range" min="1" max="10" value="${votoPersonale}" class="valutazione-slider" data-key="${articleKey}" data-index="${index}">
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-
-            document.querySelectorAll(".valutazione-slider").forEach(slider => {
-                slider.addEventListener("input", (e) => {
-                    const idx = e.target.getAttribute("data-index");
-                    const key = e.target.getAttribute("data-key");
-                    const val = parseInt(e.target.value);
-
-                    document.getElementById(`valore-voto-${idx}`).innerText = `${val} / 10`;
-
-                    if (!archivioVoti[key]) {
-                        archivioVoti[key] = {};
-                    }
-                    archivioVoti[key]["Lettore_Locale"] = val;
-                    localStorage.setItem("archivio_voti_articoli", JSON.stringify(archivioVoti));
-
-                    const nuovaInfoMedia = calcolaMediaVoti(key);
-                    const testoBadge = document.getElementById(`testo-badge-${idx}`);
-                    if (testoBadge) {
-                        testoBadge.parentElement.innerHTML = `
-                            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            <span>${nuovaInfoMedia.media}</span> <small style="opacity:0.8">(${nuovaInfoMedia.conteggio})</small>
-                        `;
-                    }
-                });
-            });
         });
+
+        function getCategoriaInfo(categoria) {
+            const mapping = {
+                "ATTUALITA'": { classe: "cat-attualita", img: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800" },
+                "POLITICA": { classe: "cat-politica", img: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800" },
+                "SCIENZA": { classe: "cat-scienza", img: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800" },
+                "RELIGIONE": { classe: "cat-religione", img: "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800" },
+                "ECONOMIA": { classe: "cat-economia", img: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800" },
+                "ARTE": { classe: "cat-arte", img: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800" },
+                "FILOSOFIA": { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=800" },
+                "LETTERATURA": { classe: "cat-letteratura", img: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=800" },
+                "MUSICA": { classe: "cat-musica", img: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800" },
+                "VIAGGI": { classe: "cat-viaggi", img: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800" },
+                "STORIA": { classe: "cat-storia", img: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=800" },
+                "CINEMA": { classe: "cat-cinema", img: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800" },
+                "VIDEOGIOCHI": { classe: "cat-videogiochi", img: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800" }
+            };
+            return mapping[categoria] || { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800" };
+        }
+
+        async function caricaArticoliEValutazioni() {
+            const container = document.getElementById("lista-completa");
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "articoli"));
+                let articoli = [];
+                querySnapshot.forEach(docSnap => {
+                    articoli.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                articoli.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                container.innerHTML = "";
+                if(articoli.length === 0) {
+                    container.innerHTML = "<p>Nessun articolo presente al momento.</p>";
+                    return;
+                }
+
+                // Carica voti da Firestore
+                const votiSnapshot = await window.getDocs(window.collection(window.db, "voti_articoli"));
+                let archivioVoti = {};
+                votiSnapshot.forEach(docSnap => {
+                    archivioVoti[docSnap.id] = docSnap.data().voti || {};
+                });
+
+                function calcolaMediaVoti(articleKey) {
+                    const votiMap = archivioVoti[articleKey];
+                    if (!votiMap || Object.keys(votiMap).length === 0) return { media: "N.D.", conteggio: 0 };
+                    let valori = Object.values(votiMap);
+                    let somma = valori.reduce((acc, val) => acc + val, 0);
+                    let media = (somma / valori.length).toFixed(1);
+                    return { media: media, conteggio: valori.length };
+                }
+
+                // ID utente univoco locale per salvare la preferenza del voto sul cloud
+                let userId = localStorage.getItem("firebase_user_id");
+                if (!userId) {
+                    userId = 'user_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+                    localStorage.setItem("firebase_user_id", userId);
+                }
+
+                articoli.forEach((articolo, index) => {
+                    const card = document.createElement("article");
+                    card.id = `articolo-${index}`;
+                    card.className = "card-articolo";
+                    const info = getCategoriaInfo(articolo.categoria);
+                    const immagineSrc = articolo.immagine ? articolo.immagine : info.img;
+
+                    const articleKey = articolo.id; 
+                    
+                    let votoPersonale = 5;
+                    if (archivioVoti[articleKey] && archivioVoti[articleKey][userId] !== undefined) {
+                        votoPersonale = archivioVoti[articleKey][userId];
+                    }
+
+                    const infoMedia = calcolaMediaVoti(articleKey);
+
+                    card.innerHTML = `
+                        <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate">
+                            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span id="testo-badge-${index}">${infoMedia.media}</span> <small style="opacity:0.8">(${infoMedia.conteggio})</small>
+                        </div>
+
+                        <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img">
+                        <div class="card-contenuto">
+                            <span class="categoria ${info.classe}">${articolo.categoria}</span>
+                            <h3>${articolo.titolo}</h3>
+                            <small>Pubblicato il: ${articolo.data}</small>
+                            <div class="testo-articolo">${articolo.testo}</div>
+                            
+                            <div class="valutazione-box">
+                                <div class="valutazione-header">
+                                    <span>Valuta questo articolo:</span>
+                                    <strong id="valore-voto-${index}">${votoPersonale} / 10</strong>
+                                </div>
+                                <input type="range" min="1" max="10" value="${votoPersonale}" class="valutazione-slider" data-key="${articleKey}" data-index="${index}">
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                document.querySelectorAll(".valutazione-slider").forEach(slider => {
+                    slider.addEventListener("input", async (e) => {
+                        const idx = e.target.getAttribute("data-index");
+                        const key = e.target.getAttribute("data-key");
+                        const val = parseInt(e.target.value);
+
+                        document.getElementById(`valore-voto-${idx}`).innerText = `${val} / 10`;
+
+                        if (!archivioVoti[key]) {
+                            archivioVoti[key] = {};
+                        }
+                        archivioVoti[key][userId] = val;
+
+                        try {
+                            await window.setDoc(window.doc(window.db, "voti_articoli", key), {
+                                voti: archivioVoti[key]
+                            }, { merge: true });
+                        } catch (err) {
+                            console.error("Errore salvataggio voto su Firestore:", err);
+                        }
+
+                        const nuovaInfoMedia = calcolaMediaVoti(key);
+                        const testoBadge = document.getElementById(`testo-badge-${idx}`);
+                        if (testoBadge) {
+                            testoBadge.parentElement.innerHTML = `
+                                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                <span>${nuovaInfoMedia.media}</span> <small style="opacity:0.8">(${nuovaInfoMedia.conteggio})</small>
+                            `;
+                        }
+                    });
+                });
+
+            } catch (err) {
+                console.error("Errore caricamento articoli su leggi.html:", err);
+                container.innerHTML = "<p>Errore nel caricamento degli articoli.</p>";
+            }
+        }
     </script>
 </body>
 </html>
