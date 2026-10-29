@@ -17,7 +17,7 @@
 
 body {
     font-family: 'Nunito', sans-serif;
-    background-color: #fcfbf7; /* Bianco panna generale del sito */
+    background-color: #fcfbf7;
     color: #2c2c2c;
     margin: 0;
     padding: 0;
@@ -54,44 +54,68 @@ body::after {
         border-radius: 50%;
     }
 }
-/* ---------------------------------------------------- */
 
-/* Barra del menu ben distinta e più scura rispetto al sito */
+/* --- HEADER DINAMICO COMPATTABILE AL SCROLL --- */
 header {
     background-color: #e8e2d5; 
     color: #1a1a1a;
     text-align: center;
-    padding: 2.5rem 1rem;
+    padding: 2rem 1rem;
     border-bottom: 3px solid #d4cbb8;
     box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     position: sticky;
     top: 0;
     z-index: 1000;
+    transition: all 0.3s ease;
 }
 
 header h1 {
     margin: 0;
-    font-size: 3rem;
+    font-size: 2.8rem;
     letter-spacing: 3px;
     font-weight: 900;
     color: #111;
+    transition: font-size 0.3s ease;
 }
 
 header p {
     color: #555;
     font-style: italic;
-    margin-top: 6px;
-    font-size: 1.15rem;
+    margin-top: 4px;
+    font-size: 1.1rem;
     font-weight: 300;
+    transition: all 0.3s ease;
+    max-height: 50px;
+    overflow: hidden;
+}
+
+/* Classe attivata via JavaScript quando si scorre la pagina */
+header.scrolled {
+    padding: 0.6rem 1rem;
+}
+
+header.scrolled h1 {
+    font-size: 1.5rem;
+}
+
+header.scrolled p {
+    opacity: 0;
+    margin-top: 0;
+    max-height: 0;
+}
+
+header.scrolled .main-nav {
+    margin-top: 8px;
 }
 
 /* Menu con icone vettoriali interattive */
 .main-nav {
-    margin-top: 22px;
+    margin-top: 18px;
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
+    transition: margin 0.3s ease;
 }
 
 .main-nav a {
@@ -100,8 +124,8 @@ header p {
     gap: 6px;
     color: #333;
     text-decoration: none;
-    padding: 8px 14px;
-    font-size: 0.9rem;
+    padding: 6px 12px;
+    font-size: 0.85rem;
     font-weight: 700;
     border-radius: 6px;
     transition: all 0.25s ease;
@@ -110,8 +134,8 @@ header p {
 }
 
 .main-nav a svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     fill: currentColor;
     transition: transform 0.2s ease;
 }
@@ -297,10 +321,14 @@ header p {
     font-size: 0.95rem;
 }
 
+/* --- TESTI GIUSTIFICATI E OTTIMIZZATI PER MOBILE --- */
 .testo-articolo {
     line-height: 1.85;
-    font-size: 1.15rem;
+    font-size: 1.12rem;
     color: #2c2c2c;
+    text-align: justify;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .testo-articolo ul, .testo-articolo ol {
@@ -397,6 +425,7 @@ header p {
     color: #111;
     outline: none;
     line-height: 1.7;
+    text-align: justify;
 }
 
 .btn-pubblica {
@@ -446,19 +475,6 @@ header p {
 /* Importazione dei vari font Google per singola lettera */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&family=Bebas+Neue&family=Space+Grotesk:wght@700&family=Cormorant+Garamond:ital,wght@1,700&family=Montserrat:wght@900&family=Cinzel:wght@700&family=Courier+Prime:wght@700&family=Syne:wght@800&family=DM+Serif+Display:ital@1&family=Oswald:wght@700&family=Italiana&family=Prata&family=UnifrakturMaguntia&family=Caveat:wght@700&display=swap');
 
-/* Header con stacco cromatico panna scuro */
-header {
-    background-color: #e8e2d5; 
-    color: #1a1a1a;
-    text-align: center;
-    padding: 3rem 1rem;
-    border-bottom: 3px solid #d4cbb8;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
 /* Titolo con lettere a font alternati */
 .titolo-ibrido {
     margin: 0;
@@ -468,7 +484,6 @@ header {
     line-height: 1.2;
 }
 
-/* Assegnazione casuale/alternata di un font diverso a ogni singola lettera */
 .l-0  { font-family: 'Playfair Display', serif; font-style: italic; }
 .l-1  { font-family: 'Bebas Neue', sans-serif; }
 .l-2  { font-family: 'Cormorant Garamond', serif; font-style: italic; }
@@ -492,12 +507,11 @@ header {
 .l-20 { font-family: 'Italiana', serif; }
 .l-21 { font-family: 'Montserrat', sans-serif; }
 
-/* Sottotitolo in corsivo molto sottile */
 header p {
     color: #666;
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
-    font-weight: 300; /* Molto sottile (light) */
+    font-weight: 300;
     font-size: 1.35rem;
     margin-top: 10px;
     letter-spacing: 1px;
