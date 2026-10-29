@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archivio - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Configurazione Firebase -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      const firebaseConfig = {
+        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+        projectId: "flusso-di-coscienza-4e96d",
+        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+        messagingSenderId: "617712339143",
+        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+      };
+      const app = initializeApp(firebaseConfig);
+    </script>
+
     <style>
         .card-articolo.estratto-cliccabile {
             cursor: pointer;
@@ -39,13 +54,27 @@
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>pensieri liberi</p>
         <nav class="main-nav">
-            <a href="index.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home</a>
-            <a href="leggi.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi</a>
-            <a href="vota.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota</a>
-            <a href="proponi.html"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi</a>
-            <a href="discuti.html"><svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti</a>
-            <a href="archivio.html" class="active"><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio</a>
-            <a href="redazione.html" class="btn-owner"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione</a>
+            <a href="index.html">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
+            </a>
+            <a href="leggi.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
+            </a>
+            <a href="vota.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
+            </a>
+            <a href="proponi.html">
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
+            </a>
+            <a href="discuti.html">
+                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
+            </a>
+            <a href="archivio.html" class="active">
+                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
+            </a>
+            <a href="redazione.html" class="btn-owner">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
+            </a>
         </nav>
     </header>
 
@@ -68,27 +97,10 @@
             <button onclick="filtraCategoria('VIDEOGIOCHI')" class="btn-cat">VIDEOGIOCHI</button>
         </div>
 
-        <div id="archivio-grid" class="articoli-grid" style="margin-top: 35px;">
-            <p>Caricamento archivio in tempo reale...</p>
-        </div>
+        <div id="archivio-grid" class="articoli-grid" style="margin-top: 35px;"></div>
     </main>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-            projectId: "flusso-di-coscienza-4e96d",
-            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-            messagingSenderId: "617712339143",
-            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+    <script>
         window.addEventListener("scroll", () => {
             const header = document.getElementById("site-header");
             if (window.scrollY > 50) {
@@ -100,7 +112,7 @@
 
         let tuttiArticoli = [];
 
-        document.addEventListener("DOMContentLoaded", async () => {
+        document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
             const h1Element = document.getElementById("titolo-dinamico");
@@ -114,12 +126,8 @@
                 }
             }
 
-            try {
-                const querySnapshot = await getDocs(collection(db, "articoli"));
-                querySnapshot.forEach(doc => tuttiArticoli.push(doc.data()));
-                tuttiArticoli.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                mostraArticoli(tuttiArticoli);
-            } catch (err) {}
+            tuttiArticoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
+            mostraArticoli(tuttiArticoli);
         });
 
         function getCategoriaInfo(categoria) {
@@ -141,28 +149,30 @@
             return mapping[categoria] || { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800" };
         }
 
-        window.filtraCategoria = function(cat) {
+        function filtraCategoria(cat) {
             document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
 
-            if (cat === 'TUTTI') {
+            if(cat === 'TUTTI') {
                 mostraArticoli(tuttiArticoli);
             } else {
                 const filtrati = tuttiArticoli.filter(a => a.categoria === cat);
                 mostraArticoli(filtrati);
             }
-        };
+        }
 
         function mostraArticoli(lista) {
             const container = document.getElementById("archivio-grid");
             container.innerHTML = "";
-            if (lista.length === 0) {
+            if(lista.length === 0) {
                 container.innerHTML = "<p>Nessun articolo trovato in questa categoria.</p>";
                 return;
             }
-            lista.forEach((articolo, index) => {
+            lista.forEach(articolo => {
+                const realIndex = tuttiArticoli.indexOf(articolo);
+
                 const card = document.createElement("a");
-                card.href = `leggi.html#articolo-${index}`;
+                card.href = `leggi.html#articolo-${realIndex}`;
                 card.className = "card-articolo estratto-cliccabile";
                 const info = getCategoriaInfo(articolo.categoria);
                 const immagineSrc = articolo.immagine ? articolo.immagine : info.img;

@@ -5,360 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redazione - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Configurazione Firebase -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
-            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
-            projectId: "flusso-di-coscienza-4e96d",
-            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
-            messagingSenderId: "617712339143",
-            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const HASH_PASSWORD_CORRETTO = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
-
-        window.addEventListener("scroll", () => {
-            const header = document.getElementById("site-header");
-            if (window.scrollY > 50) {
-                header.classList.add("scrolled");
-            } else {
-                header.classList.remove("scrolled");
-            }
-        });
-
-        document.addEventListener("DOMContentLoaded", async () => {
-            generaTitoloDinamico();
-            if (sessionStorage.getItem("owner_logged") === "true") {
-                mostraPannello();
-            }
-        });
-
-        function generaTitoloDinamico() {
-            const testoTitolo = "Flusso di Coscienza";
-            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
-            const h1Element = document.getElementById("titolo-dinamico");
-            if (h1Element) {
-                h1Element.innerHTML = "";
-                for (let i = 0; i < testoTitolo.length; i++) {
-                    const span = document.createElement("span");
-                    span.innerText = testoTitolo[i];
-                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
-                    h1Element.appendChild(span);
-                }
-            }
-        }
-
-        window.verificaPassword = async function() {
-            const pwd = document.getElementById("owner-password").value;
-            const msgBuffer = new TextEncoder().encode(pwd);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashDigitato = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-            if (hashDigitato === HASH_PASSWORD_CORRETTO) {
-                sessionStorage.setItem("owner_logged", "true");
-                mostraPannello();
-            } else {
-                alert("Password errata!");
-                document.getElementById("owner-password").value = "";
-            }
-        };
-
-        window.effettuaLogout = function() {
-            sessionStorage.removeItem("owner_logged");
-            location.reload();
-        };
-
-        async function mostraPannello() {
-            document.getElementById("login-box").style.display = "none";
-            document.getElementById("redazione-panel").style.display = "block";
-            await caricaListaGestione();
-            await caricaDatiSondaggioRedazione();
-            await caricaListaCommentiRedazione();
-            await caricaProposteRedazione();
-        }
-
-        // ARTICOLI
-        document.getElementById("file-immagine").addEventListener("change", function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    const base64String = uploadEvent.target.result;
-                    document.getElementById("immagine-base64").value = base64String;
-                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        window.triggerArticoloImmagine = () => document.getElementById("file-img-articolo").click();
-        window.inserisciImmagineArticolo = function(input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.execCommand('insertImage', false, e.target.result);
-                    document.getElementById('editor-testo').focus();
-                };
-                reader.readAsDataURL(file);
-            }
-            input.value = "";
-        };
-
-        window.formatText = (command) => { document.execCommand(command, false, null); document.getElementById('editor-testo').focus(); };
-
-        document.getElementById("form-articolo").addEventListener("submit", async function(e) {
-            e.preventDefault();
-            const editId = document.getElementById("edit-index").value;
-            const titolo = document.getElementById("titolo").value;
-            const categoria = document.getElementById("categoria").value;
-            const immagine = document.getElementById("immagine-base64").value;
-            const testo = document.getElementById("editor-testo").innerHTML;
-            const data = new Date().toLocaleDateString();
-
-            try {
-                if (editId === "-1") {
-                    await addDoc(collection(db, "articoli"), { titolo, categoria, immagine, testo, data, timestamp: Date.now() });
-                    alert("Articolo pubblicato con successo!");
-                } else {
-                    await updateDoc(doc(db, "articoli", editId), { titolo, categoria, immagine: immagine || undefined, testo });
-                    alert("Articolo modificato con successo!");
-                    annullaModifica();
-                }
-                document.getElementById("form-articolo").reset();
-                document.getElementById("editor-testo").innerHTML = "";
-                document.getElementById("immagine-base64").value = "";
-                document.getElementById("preview-container").innerHTML = "";
-                await caricaListaGestione();
-            } catch (err) {
-                alert("Errore salvataggio articolo.");
-            }
-        });
-
-        async function caricaListaGestione() {
-            const container = document.getElementById("lista-gestione-articoli");
-            container.innerHTML = "Caricamento...";
-            try {
-                const querySnapshot = await getDocs(collection(db, "articoli"));
-                container.innerHTML = "";
-                if (querySnapshot.empty) {
-                    container.innerHTML = "<p>Nessun articolo pubblicato.</p>";
-                    return;
-                }
-                querySnapshot.forEach((documento) => {
-                    const art = documento.data();
-                    const id = documento.id;
-                    const div = document.createElement("div");
-                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
-                    div.innerHTML = `
-                        <div>
-                            <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
-                            <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
-                        </div>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo('${id}')">Elimina</button>
-                    `;
-                    container.appendChild(div);
-                });
-            } catch (e) {
-                container.innerHTML = "<p>Errore di caricamento.</p>";
-            }
-        }
-
-        window.eliminaArticolo = async function(id) {
-            if (confirm("Eliminare definitivamente questo articolo?")) {
-                await deleteDoc(doc(db, "articoli", id));
-                await caricaListaGestione();
-                alert("Articolo eliminato.");
-            }
-        };
-
-        window.annullaModifica = function() {
-            document.getElementById("edit-index").value = "-1";
-            document.getElementById("form-articolo").reset();
-            document.getElementById("editor-testo").innerHTML = "";
-            document.getElementById("immagine-base64").value = "";
-            document.getElementById("preview-container").innerHTML = "";
-            document.getElementById("form-title").innerText = "Pubblica un Nuovo Articolo";
-            document.getElementById("btn-submit-articolo").innerText = "Pubblica";
-            document.getElementById("btn-annulla-modifica").style.display = "none";
-        };
-
-        // SONDAGGIO E ARCHIVIAZIONE SONDAGGIO
-        async function caricaDatiSondaggioRedazione() {
-            try {
-                const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
-                if (snap.exists()) {
-                    const data = snap.data();
-                    document.getElementById("categoria-sondaggio").value = data.categoria || "ATTUALITA'";
-                    document.getElementById("input-sondaggio").value = data.domanda || "";
-                    caricaCampiOpzioni(data.opzioni || ["Sì", "No"]);
-                } else {
-                    caricaCampiOpzioni(["Sì", "No"]);
-                }
-            } catch(e) {}
-        }
-
-        window.aggiungiCampoOpzione = function(valore = "") {
-            const container = document.getElementById("container-opzioni");
-            const div = document.createElement("div");
-            div.style.cssText = "display: flex; gap: 8px; align-items: center;";
-            div.innerHTML = `
-                <input type="text" class="input-opzione" value="${valore}" required placeholder="Testo opzione..." style="flex:1;">
-                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b; padding: 10px 14px;" onclick="this.parentElement.remove()">X</button>
-            `;
-            container.appendChild(div);
-        };
-
-        function caricaCampiOpzioni(opzioni) {
-            const container = document.getElementById("container-opzioni");
-            container.innerHTML = "";
-            opzioni.forEach(opt => aggiungiCampoOpzione(opt));
-        }
-
-        document.getElementById("form-sondaggio").addEventListener("submit", async function(e) {
-            e.preventDefault();
-            const categoria = document.getElementById("categoria-sondaggio").value;
-            const domanda = document.getElementById("input-sondaggio").value;
-            const opzioni = Array.from(document.querySelectorAll(".input-opzione")).map(i => i.value.trim()).filter(Boolean);
-
-            if (opzioni.length < 2) {
-                alert("Inserisci almeno 2 opzioni!");
-                return;
-            }
-
-            try {
-                await setDoc(doc(db, "sondaggioAttivo", "corrente"), { categoria, domanda, opzioni, voti: {}, totaleVotanti: 0 });
-                alert("Sondaggio aggiornato su Firebase!");
-            } catch(err) {
-                alert("Errore salvataggio sondaggio.");
-            }
-        });
-
-        window.archiviaSondaggioCorrente = async function() {
-            if (!confirm("Vuoi archiviare il sondaggio attuale e spostarlo nell'archivio storico?")) return;
-            try {
-                const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
-                if (!snap.exists()) {
-                    alert("Nessun sondaggio attivo da archiviare.");
-                    return;
-                }
-                const datiSondaggio = snap.data();
-                datiSondaggio.dataArchiviazione = new Date().toLocaleDateString();
-
-                await addDoc(collection(db, "archivioSondaggi"), datiSondaggio);
-                await setDoc(doc(db, "sondaggioAttivo", "corrente"), {
-                    categoria: "ATTUALITA'",
-                    domanda: "Nuovo sondaggio da impostare",
-                    opzioni: ["Sì", "No"],
-                    voti: {},
-                    totaleVotanti: 0
-                });
-
-                alert("Sondaggio archiviato con successo!");
-                await caricaDatiSondaggioRedazione();
-            } catch (err) {
-                alert("Errore durante l'archiviazione del sondaggio.");
-            }
-        };
-
-        // MODERAZIONE DISCUSSIONE & PROPOSTE
-        async function caricaListaCommentiRedazione() {
-            const container = document.getElementById("lista-gestione-commenti");
-            container.innerHTML = "Caricamento...";
-            try {
-                const querySnapshot = await getDocs(collection(db, "commenti"));
-                container.innerHTML = "";
-                if (querySnapshot.empty) {
-                    container.innerHTML = "<p>Nessun intervento presente.</p>";
-                    return;
-                }
-                querySnapshot.forEach((documento) => {
-                    const com = documento.data();
-                    const id = documento.id;
-                    const div = document.createElement("div");
-                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #d4cbb8; display: flex; justify-content: space-between; align-items: center;";
-                    div.innerHTML = `
-                        <div>
-                            <strong style="color:#111;">${com.autore}</strong> <small style="color:#666;">(${com.data})</small>
-                            <p style="margin: 6px 0 0 0; color:#333;">${com.testo}</p>
-                        </div>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaCommentoAgora('${id}')">Elimina</button>
-                    `;
-                    container.appendChild(div);
-                });
-            } catch(e) {
-                container.innerHTML = "<p>Errore caricamento commenti.</p>";
-            }
-        }
-
-        window.eliminaCommentoAgora = async function(id) {
-            if (confirm("Eliminare questo commento?")) {
-                await deleteDoc(doc(db, "commenti", id));
-                await caricaListaCommentiRedazione();
-                alert("Commento eliminato.");
-            }
-        };
-
-        async function caricaProposteRedazione() {
-            const container = document.getElementById("lista-proposte-redazione");
-            container.innerHTML = "Caricamento...";
-            try {
-                const querySnapshot = await getDocs(collection(db, "proposte"));
-                container.innerHTML = "";
-                if (querySnapshot.empty) {
-                    container.innerHTML = "<p>Nessuna proposta ricevuta.</p>";
-                    return;
-                }
-                querySnapshot.forEach((documento) => {
-                    const prop = documento.data();
-                    const id = documento.id;
-                    const div = document.createElement("div");
-                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
-                    div.innerHTML = `
-                        <div>
-                            <strong style="font-size:1.1rem; color:#111;">${prop.titolo}</strong><br>
-                            <small style="color:#666;">Autore: ${prop.autore} - Inviato il: ${prop.data}</small>
-                        </div>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="scartaProposta('${id}')">Scarta</button>
-                    `;
-                    container.appendChild(div);
-                });
-            } catch(e) {
-                container.innerHTML = "<p>Errore caricamento proposte.</p>";
-            }
-        }
-
-        window.scartaProposta = async function(id) {
-            if (confirm("Vuoi scartare ed eliminare questa proposta?")) {
-                await deleteDoc(doc(db, "proposte", id));
-                await caricaProposteRedazione();
-            }
-        };
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      const firebaseConfig = {
+        apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+        authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+        projectId: "flusso-di-coscienza-4e96d",
+        storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+        messagingSenderId: "617712339143",
+        appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+      };
+      const app = initializeApp(firebaseConfig);
     </script>
 </head>
 <body>
-    <header id="site-header">
+    <header>
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>Area Riservata Owner</p>
         <nav class="main-nav">
-            <a href="index.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home</a>
-            <a href="leggi.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi</a>
-            <a href="vota.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota</a>
-            <a href="proponi.html"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi</a>
-            <a href="discuti.html"><svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti</a>
-            <a href="archivio.html"><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio</a>
-            <a href="redazione.html" class="active btn-owner"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione</a>
+            <a href="index.html">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
+            </a>
+            <a href="leggi.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
+            </a>
+            <a href="vota.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
+            </a>
+            <a href="proponi.html">
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
+            </a>
+            <a href="discuti.html">
+                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
+            </a>
+            <a href="archivio.html">
+                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
+            </a>
+            <a href="redazione.html" class="active btn-owner">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
+            </a>
         </nav>
     </header>
 
     <main class="container">
+        <!-- Schermata di Login -->
         <div id="login-box" class="form-container">
-            <h2>Area Redazione</h2>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <svg style="width:28px; height:28px; fill:currentColor;" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <h2>Area Redazione</h2>
+            </div>
             <p>Inserisci la password per accedere al pannello di controllo.</p>
             <div class="form-group" style="margin-top: 25px;">
                 <input type="password" id="owner-password" placeholder="Password segreta...">
@@ -366,21 +63,32 @@
             <button type="button" class="btn-pubblica" onclick="verificaPassword()">Accedi</button>
         </div>
 
+        <!-- Pannello di Controllo Completo -->
         <div id="redazione-panel" style="display: none;">
+            
             <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
                 <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="effettuaLogout()">Esci / Logout</button>
             </div>
 
+            <!-- Sezione 1: Pubblica / Modifica Articolo -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2 id="form-title">Pubblica un Nuovo Articolo</h2>
                 <form id="form-articolo" style="margin-top: 25px;">
                     <input type="hidden" id="edit-index" value="-1">
+                    
                     <div class="form-group">
-                        <label>Titolo</label>
+                        <label for="titolo" style="display: flex; align-items: center; gap: 8px;">
+                            <svg style="width:20px; height:20px; fill:currentColor;" viewBox="0 0 24 24"><path d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>
+                            Titolo
+                        </label>
                         <input type="text" id="titolo" required placeholder="Titolo...">
                     </div>
+
                     <div class="form-group">
-                        <label>Categoria</label>
+                        <label for="categoria" style="display: flex; align-items: center; gap: 8px;">
+                            <svg style="width:20px; height:20px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 2l-5.5 9h11L12 2zm0 3.84L14.93 9H9.07L12 5.84zM2 13h20v2H2v-2zm2 4h16v2H4v-2z"/></svg>
+                            Categoria
+                        </label>
                         <select id="categoria">
                             <option value="ATTUALITA'">ATTUALITA'</option>
                             <option value="POLITICA">POLITICA</option>
@@ -397,48 +105,73 @@
                             <option value="VIDEOGIOCHI">VIDEOGIOCHI</option>
                         </select>
                     </div>
+
                     <div class="form-group">
-                        <label>Copertina</label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <svg style="width:20px; height:20px; fill:currentColor;" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                            Copertina
+                        </label>
                         <input type="file" id="file-immagine" accept="image/*">
                         <input type="hidden" id="immagine-base64">
                         <div id="preview-container" style="margin-top: 10px;"></div>
                     </div>
+
                     <div class="form-group">
-                        <label>Articolo</label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <svg style="width:20px; height:20px; fill:currentColor;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            Articolo
+                        </label>
                         <div class="editor-toolbar">
                             <button type="button" onclick="formatText('bold')"><b>B</b></button>
                             <button type="button" onclick="formatText('italic')"><i>I</i></button>
+                            <button type="button" onclick="formatText('insertUnorderedList')">Elenco</button>
                             <button type="button" onclick="triggerArticoloImmagine()">🖼️ Immagine</button>
                             <input type="file" id="file-img-articolo" accept="image/*" style="display: none;" onchange="inserisciImmagineArticolo(this)">
                         </div>
                         <div id="editor-testo" contenteditable="true" class="editor-content"></div>
                     </div>
+
                     <button type="submit" id="btn-submit-articolo" class="btn-pubblica">Pubblica</button>
+                    <button type="button" id="btn-annulla-modifica" class="btn-cat" style="display:none; width:100%; margin-top:10px;" onclick="annullaModifica()">Annulla Modifica</button>
                 </form>
             </div>
 
+            <!-- Sezione 2: Gestione Articoli Esistenti -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <h2>Gestione Articoli</h2>
-                <div id="lista-gestione-articoli" style="margin-top: 20px;">Caricamento...</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    <h2>Gestione Articoli</h2>
+                </div>
+                <div id="lista-gestione-articoli" style="margin-top: 20px;"></div>
             </div>
 
+            <!-- Sezione 3: Sondaggio -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2>Sondaggio Attivo</h2>
-                    <button type="button" class="btn-cat" style="background:#b45309; color:#fff; border-color:#b45309;" onclick="archiviaSondaggioCorrente()">Archivia Sondaggio Attuale</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    <h2>Sondaggio</h2>
                 </div>
                 <form id="form-sondaggio" style="margin-top: 25px;">
                     <div class="form-group">
-                        <label>Categoria del Sondaggio</label>
+                        <label for="categoria-sondaggio">Categoria del Sondaggio</label>
                         <select id="categoria-sondaggio">
                             <option value="ATTUALITA'">ATTUALITA'</option>
                             <option value="POLITICA">POLITICA</option>
                             <option value="SCIENZA">SCIENZA</option>
+                            <option value="RELIGIONE">RELIGIONE</option>
+                            <option value="ECONOMIA">ECONOMIA</option>
+                            <option value="ARTE">ARTE</option>
                             <option value="FILOSOFIA">FILOSOFIA</option>
+                            <option value="LETTERATURA">LETTERATURA</option>
+                            <option value="MUSICA">MUSICA</option>
+                            <option value="VIAGGI">VIAGGI</option>
+                            <option value="STORIA">STORIA</option>
+                            <option value="CINEMA">CINEMA</option>
+                            <option value="VIDEOGIOCHI">VIDEOGIOCHI</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin-top: 20px;">
-                        <label>Domanda</label>
+                        <label for="input-sondaggio">Domanda</label>
                         <input type="text" id="input-sondaggio" required>
                     </div>
                     <div class="form-group" style="margin-top: 20px;">
@@ -446,20 +179,535 @@
                         <div id="container-opzioni" style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;"></div>
                         <button type="button" class="btn-cat" style="margin-top: 10px;" onclick="aggiungiCampoOpzione()">+ Aggiungi Opzione</button>
                     </div>
-                    <button type="submit" class="btn-pubblica" style="margin-top: 20px;">Salva Sondaggio</button>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn-pubblica" style="flex:1;">Salva</button>
+                        <button type="button" class="btn-cat" style="background:#b45309; color:#fff; border-color:#b45309; flex:1;" onclick="archiviaSondaggioCorrente()">Archivia</button>
+                    </div>
                 </form>
             </div>
 
+            <!-- Sezione 3.5: Gestione Sondaggi Archiviati -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <h2>Moderazione Discussione</h2>
-                <div id="lista-gestione-commenti" style="margin-top: 20px;">Caricamento...</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                    <h2>Gestione Sondaggi Archiviati</h2>
+                </div>
+                <div id="lista-gestione-sondaggi-archiviati" style="margin-top: 20px;"></div>
             </div>
 
+            <!-- Sezione 4: Discussione -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <h2>Proposte degli Utenti</h2>
-                <div id="lista-proposte-redazione" style="margin-top: 20px;">Caricamento...</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+                    <h2>Discussione</h2>
+                </div>
+                <form id="form-discussione" style="margin-top: 25px;">
+                    <div class="form-group">
+                        <label for="input-discussione">Argomento</label>
+                        <input type="text" id="input-discussione" required>
+                    </div>
+                    <button type="submit" class="btn-pubblica">Salva</button>
+                </form>
             </div>
+
+            <!-- Sezione 4.5: Moderazione Discussione -->
+            <div class="form-container" style="margin-bottom: 40px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+                    <h2>Moderazione Discussione</h2>
+                </div>
+                <div id="lista-gestione-commenti" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- Sezione 5: Proposte degli Utenti -->
+            <div class="form-container" style="margin-bottom: 40px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg style="width:24px; height:24px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    <h2>Proposte</h2>
+                </div>
+                <div id="lista-proposte-redazione" style="margin-top: 20px;"></div>
+            </div>
+
         </div>
     </main>
+
+    <!-- Modale per leggere la proposta intera -->
+    <div id="modale-proposta" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: #fdfbf7; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #d4cbb8; position: relative;">
+            <h3 id="modale-titolo" style="margin-bottom: 10px; color: #111;"></h3>
+            <small id="modale-info" style="color: #666; display: block; margin-bottom: 20px;"></small>
+            <div id="modale-testo" style="line-height: 1.6; color: #333; white-space: pre-wrap; margin-bottom: 25px;"></div>
+            <button type="button" class="btn-cat" style="background:#333; color:#fff;" onclick="chiudiModaleProposta()">Chiudi</button>
+        </div>
+    </div>
+
+    <script>
+        const HASH_PASSWORD_CORRETTO = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const testoTitolo = "Flusso di Coscienza";
+            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
+            const h1Element = document.getElementById("titolo-dinamico");
+            if (h1Element) {
+                h1Element.innerHTML = "";
+                for (let i = 0; i < testoTitolo.length; i++) {
+                    const span = document.createElement("span");
+                    span.innerText = testoTitolo[i];
+                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
+                    h1Element.appendChild(span);
+                }
+            }
+
+            if (sessionStorage.getItem("owner_logged") === "true") {
+                mostraPannello();
+            }
+
+            const categoriaSondaggioSalvata = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
+            document.getElementById("categoria-sondaggio").value = categoriaSondaggioSalvata;
+
+            const sondaggioSalvato = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
+            document.getElementById("input-sondaggio").value = sondaggioSalvato;
+
+            let opzioniSalvate = JSON.parse(localStorage.getItem("opzioni_sondaggio"));
+            if (!opzioniSalvate) {
+                opzioniSalvate = ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
+            }
+            caricaCampiOpzioni(opzioniSalvate);
+
+            const discussioneSalvata = localStorage.getItem("topic_discussione") || "Dibattito del Mese";
+            document.getElementById("input-discussione").value = discussioneSalvata;
+        });
+
+        function caricaCampiOpzioni(opzioni) {
+            const container = document.getElementById("container-opzioni");
+            container.innerHTML = "";
+            opzioni.forEach(opt => {
+                aggiungiCampoOpzione(opt);
+            });
+        }
+
+        function aggiungiCampoOpzione(valore = "") {
+            const container = document.getElementById("container-opzioni");
+            const div = document.createElement("div");
+            div.style.cssText = "display: flex; gap: 8px; align-items: center;";
+            div.innerHTML = `
+                <input type="text" class="input-opzione" value="${valore}" required placeholder="Testo opzione..." style="flex:1;">
+                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b; padding: 10px 14px;" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(div);
+        }
+
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function verificaPassword() {
+            const pwd = document.getElementById("owner-password").value;
+            const hashDigitato = await sha256(pwd);
+
+            if (hashDigitato === HASH_PASSWORD_CORRETTO) {
+                sessionStorage.setItem("owner_logged", "true");
+                mostraPannello();
+            } else {
+                alert("Password errata! Accesso negato.");
+                document.getElementById("owner-password").value = "";
+            }
+        }
+
+        function mostraPannello() {
+            document.getElementById("login-box").style.display = "none";
+            document.getElementById("redazione-panel").style.display = "block";
+            caricaListaGestione();
+            caricaListaSondaggiArchiviati();
+            caricaListaCommentiRedazione();
+            caricaProposteRedazione();
+        }
+
+        function effettuaLogout() {
+            sessionStorage.removeItem("owner_logged");
+            location.reload();
+        }
+
+        document.getElementById("file-immagine").addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(uploadEvent) {
+                    const base64String = uploadEvent.target.result;
+                    document.getElementById("immagine-base64").value = base64String;
+                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function triggerArticoloImmagine() {
+            document.getElementById("file-img-articolo").click();
+        }
+
+        function inserisciImmagineArticolo(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Img = e.target.result;
+                    document.execCommand('insertImage', false, base64Img);
+                    document.getElementById('editor-testo').focus();
+                };
+                reader.readAsDataURL(file);
+            }
+            input.value = "";
+        }
+
+        function formatText(command) {
+            document.execCommand(command, false, null);
+            document.getElementById('editor-testo').focus();
+        }
+
+        function caricaListaGestione() {
+            const container = document.getElementById("lista-gestione-articoli");
+            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
+            container.innerHTML = "";
+
+            if (articoli.length === 0) {
+                container.innerHTML = "<p>Nessun articolo pubblicato.</p>";
+                return;
+            }
+
+            articoli.forEach((art, index) => {
+                const div = document.createElement("div");
+                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
+                div.innerHTML = `
+                    <div>
+                        <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
+                        <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-cat" onclick="preparaModifica(${index})">Modifica</button>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo(${index})">Elimina</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function caricaListaSondaggiArchiviati() {
+            const container = document.getElementById("lista-gestione-sondaggi-archiviati");
+            let archivio = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
+            container.innerHTML = "";
+
+            if (archivio.length === 0) {
+                container.innerHTML = "<p>Nessun sondaggio archiviato.</p>";
+                return;
+            }
+
+            archivio.forEach((sondaggio, index) => {
+                const div = document.createElement("div");
+                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
+                div.innerHTML = `
+                    <div>
+                        <strong style="font-size:1.1rem; color:#111;">${sondaggio.domanda}</strong><br>
+                        <small style="color:#666;">[${sondaggio.categoria}] - Archiviato il: ${sondaggio.dataArchiviazione} (${sondaggio.totaleVotanti} voti)</small>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaSondaggioArchiviato(${index})">Elimina</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function eliminaSondaggioArchiviato(index) {
+            if (confirm("Sei sicuro di voler eliminare definitivamente questo sondaggio dall'archivio?")) {
+                let archivio = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
+                archivio.splice(index, 1);
+                localStorage.setItem("archivio_sondaggi", JSON.stringify(archivio));
+                caricaListaSondaggiArchiviati();
+                alert("Sondaggio archiviato eliminato con successo.");
+            }
+        }
+
+        function caricaListaCommentiRedazione() {
+            const container = document.getElementById("lista-gestione-commenti");
+            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+            container.innerHTML = "";
+
+            if (commenti.length === 0) {
+                container.innerHTML = "<p>Nessun intervento presente nella discussione.</p>";
+                return;
+            }
+
+            commenti.forEach((com) => {
+                const div = document.createElement("div");
+                div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #d4cbb8;";
+                
+                let risposteHtml = "";
+                if (com.risposte && com.risposte.length > 0) {
+                    com.risposte.forEach(resp => {
+                        risposteHtml += `
+                            <div style="background: #f0ebe1; padding: 10px; border-radius: 4px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="max-width: 80%;">
+                                    <strong style="font-size: 0.9rem; color:#333;">↳ ${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.9rem; color:#444;">${resp.testo}</p>
+                                </div>
+                                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b; padding: 4px 8px; font-size: 0.8rem;" onclick="eliminaRispostaRedazione(${com.id}, ${resp.id})">Elimina</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="max-width: 75%;">
+                            <strong style="color:#111;">${com.autore}</strong> <small style="color:#666;">(${com.data}) - ❤️ ${com.likes} likes</small>
+                            <p style="margin: 6px 0 0 0; font-size: 0.95rem; color:#333; line-height: 1.4;">${com.testo}</p>
+                        </div>
+                        <div>
+                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaCommentoAgora(${com.id})">Elimina</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; padding-left: 15px; border-left: 2px solid #d4cbb8;">
+                        ${risposteHtml}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function eliminaCommentoAgora(id) {
+            if (confirm("Sei sicuro di voler eliminare questo commento e tutte le sue risposte?")) {
+                let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+                commenti = commenti.filter(c => c.id !== id);
+                localStorage.setItem("commenti_agora", JSON.stringify(commenti));
+                caricaListaCommentiRedazione();
+                alert("Commento eliminato.");
+            }
+        }
+
+        function eliminaRispostaRedazione(commentoId, rispostaId) {
+            if (confirm("Sei sicuro di voler eliminare questa risposta?")) {
+                let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+                const commento = commenti.find(c => c.id === commentoId);
+                if (commento && commento.risposte) {
+                    commento.risposte = commento.risposte.filter(r => r.id !== rispostaId);
+                    localStorage.setItem("commenti_agora", JSON.stringify(commenti));
+                    caricaListaCommentiRedazione();
+                    alert("Risposta eliminata.");
+                }
+            }
+        }
+
+        function caricaProposteRedazione() {
+            const container = document.getElementById("lista-proposte-redazione");
+            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
+            container.innerHTML = "";
+
+            if (proposte.length === 0) {
+                container.innerHTML = "<p>Nessuna proposta ricevuta.</p>";
+                return;
+            }
+
+            proposte.sort((a, b) => a.id - b.id);
+
+            proposte.forEach((prop) => {
+                const div = document.createElement("div");
+                div.style.cssText = `background: ${prop.interessante ? '#f4efe6' : '#fcfbf7'}; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid ${prop.interessante ? '#b5a892' : '#d4cbb8'};`;
+                
+                div.innerHTML = `
+                    <div>
+                        <strong style="font-size:1.1rem; color:#111;">${prop.titolo}</strong><br>
+                        <small style="color:#666;">Autore: ${prop.autore} - Inviato il: ${prop.data}</small>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 500; margin-right: 5px;" title="Segna come interessante">
+                            <input type="checkbox" ${prop.interessante ? 'checked' : ''} onchange="toggleInteressanteProposta(${prop.id})" style="width: 18px; height: 18px; accent-color: #333; cursor: pointer;">
+                            Interessante
+                        </label>
+                        <button type="button" class="btn-cat" onclick="leggiProposta(${prop.id})">LEGGI</button>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="scartaProposta(${prop.id})">SCARTA</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function leggiProposta(id) {
+            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
+            const prop = proposte.find(p => p.id === id);
+            if (prop) {
+                document.getElementById("modale-titolo").innerText = prop.titolo;
+                document.getElementById("modale-info").innerText = `Proposto da: ${prop.autore} il ${prop.data}`;
+                document.getElementById("modale-testo").innerText = prop.testo;
+                document.getElementById("modale-proposta").style.display = "flex";
+            }
+        }
+
+        function chiudiModaleProposta() {
+            document.getElementById("modale-proposta").style.display = "none";
+        }
+
+        function scartaProposta(id) {
+            if (confirm("Sei sicuro di voler scartare ed eliminare questa proposta?")) {
+                let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
+                proposte = proposte.filter(p => p.id !== id);
+                localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
+                caricaProposteRedazione();
+            }
+        }
+
+        function toggleInteressanteProposta(id) {
+            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
+            const prop = proposte.find(p => p.id === id);
+            if (prop) {
+                prop.interessante = !prop.interessante;
+                localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
+                caricaProposteRedazione();
+            }
+        }
+
+        document.getElementById("form-articolo").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const editIndex = parseInt(document.getElementById("edit-index").value);
+            const titolo = document.getElementById("titolo").value;
+            const categoria = document.getElementById("categoria").value;
+            const immagine = document.getElementById("immagine-base64").value;
+            const testo = document.getElementById("editor-testo").innerHTML;
+
+            if (testo.trim() === "" || testo.trim() === "<br>") {
+                alert("Il testo non può essere vuoto!");
+                return;
+            }
+
+            let articoli = JSON.parse(JSON.stringify(JSON.parse(localStorage.getItem("miei_articoli")) || []));
+            const data = new Date().toLocaleDateString();
+
+            if (editIndex === -1) {
+                articoli.unshift({ titolo, categoria, immagine, testo, data });
+                alert("Articolo pubblicato con successo!");
+            } else {
+                const immagineFinale = immagine || articoli[editIndex].immagine;
+                articoli[editIndex] = { titolo, categoria, immagine: immagineFinale, testo, data: articoli[editIndex].data };
+                alert("Articolo modificato con successo!");
+                annullaModifica();
+            }
+
+            localStorage.setItem("miei_articoli", JSON.stringify(articoli));
+            document.getElementById("form-articolo").reset();
+            document.getElementById("editor-testo").innerHTML = "";
+            document.getElementById("immagine-base64").value = "";
+            document.getElementById("preview-container").innerHTML = "";
+            caricaListaGestione();
+        });
+
+        function preparaModifica(index) {
+            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
+            const art = articoli[index];
+
+            document.getElementById("edit-index").value = index;
+            document.getElementById("titolo").value = art.titolo;
+            document.getElementById("categoria").value = art.categoria;
+            document.getElementById("immagine-base64").value = art.immagine || "";
+            if (art.immagine) {
+                document.getElementById("preview-container").innerHTML = `<img src="${art.immagine}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
+            } else {
+                document.getElementById("preview-container").innerHTML = "";
+            }
+            document.getElementById("editor-testo").innerHTML = art.testo;
+
+            document.getElementById("form-title").innerText = "Modifica Articolo";
+            document.getElementById("btn-submit-articolo").innerText = "Salva Modifiche";
+            document.getElementById("btn-annulla-modifica").style.display = "block";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function annullaModifica() {
+            document.getElementById("edit-index").value = -1;
+            document.getElementById("form-articolo").reset();
+            document.getElementById("editor-testo").innerHTML = "";
+            document.getElementById("immagine-base64").value = "";
+            document.getElementById("preview-container").innerHTML = "";
+            document.getElementById("form-title").innerText = "Pubblica un Nuovo Articolo";
+            document.getElementById("btn-submit-articolo").innerText = "Pubblica";
+            document.getElementById("btn-annulla-modifica").style.display = "none";
+        }
+
+        function eliminaArticolo(index) {
+            if (confirm("Sei sicuro di voler eliminare definitivamente questo articolo?")) {
+                let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
+                articoli.splice(index, 1);
+                localStorage.setItem("miei_articoli", JSON.stringify(articoli));
+                caricaListaGestione();
+                alert("Articolo eliminato.");
+            }
+        }
+
+        document.getElementById("form-sondaggio").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const categoriaScelta = document.getElementById("categoria-sondaggio").value;
+            const nuovoSondaggio = document.getElementById("input-sondaggio").value;
+            
+            const inputsOpzioni = document.querySelectorAll(".input-opzione");
+            let opzioniArray = [];
+            inputsOpzioni.forEach(input => {
+                if(input.value.trim() !== "") {
+                    opzioniArray.push(input.value.trim());
+                }
+            });
+
+            if(opzioniArray.length < 2) {
+                alert("Inserisci almeno 2 opzioni valide per il sondaggio!");
+                return;
+            }
+
+            localStorage.setItem("categoria_sondaggio", categoriaScelta);
+            localStorage.setItem("topic_sondaggio", nuovoSondaggio);
+            localStorage.setItem("opzioni_sondaggio", JSON.stringify(opzioniArray));
+            
+            alert("Sondaggio e opzioni aggiornati con successo!");
+        });
+
+        function archiviaSondaggioCorrente() {
+            const domanda = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
+            const categoria = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
+            const opzioni = JSON.parse(localStorage.getItem("opzioni_sondaggio")) || ["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"];
+            const votiMappa = JSON.parse(localStorage.getItem("voti_sondaggio")) || {};
+            const totaleVotanti = parseInt(localStorage.getItem("totale_votanti") || "0");
+
+            const sondaggioArchiviato = {
+                categoria,
+                domanda,
+                opzioni,
+                votiMappa,
+                totaleVotanti,
+                dataArchiviazione: new Date().toLocaleDateString()
+            };
+
+            let archivioSondaggi = JSON.parse(localStorage.getItem("archivio_sondaggi")) || [];
+            archivioSondaggi.unshift(sondaggioArchiviato);
+            localStorage.setItem("archivio_sondaggi", JSON.stringify(archivioSondaggi));
+
+            localStorage.removeItem("voti_sondaggio");
+            localStorage.removeItem("totale_votanti");
+            localStorage.removeItem("utente_ha_votato");
+
+            alert("Sondaggio archiviato con successo! Ora puoi impostare un nuovo sondaggio attivo.");
+            caricaListaSondaggiArchiviati();
+        }
+
+        document.getElementById("form-discussione").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const nuovaDiscussione = document.getElementById("input-discussione").value;
+            localStorage.setItem("topic_discussione", nuovaDiscussione);
+            
+            localStorage.removeItem("commenti_agora");
+            localStorage.removeItem("like_miei_commenti");
+
+            alert("Discussione aggiornata con successo! Tutti i vecchi commenti sono stati cancellati.");
+            caricaListaCommentiRedazione();
+        });
+    </script>
 </body>
 </html>
