@@ -263,7 +263,7 @@
                     return { media: media, conteggio: valori.length };
                 }
 
-                // ID utente univoco locale per salvare la preferenza del voto sul cloud
+                // Correzione ID utente univoco cloud
                 let userId = localStorage.getItem("firebase_user_id");
                 if (!userId) {
                     userId = 'user_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -287,7 +287,7 @@
                     const infoMedia = calcolaMediaVoti(articleKey);
 
                     card.innerHTML = `
-                        <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate">
+                        <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate nel cloud">
                             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                             <span id="testo-badge-${index}">${infoMedia.media}</span> <small style="opacity:0.8">(${infoMedia.conteggio})</small>
                         </div>
@@ -332,12 +332,12 @@
                             console.error("Errore salvataggio voto su Firestore:", err);
                         }
 
-                        const nuovaInfoMedia = calcolaMediaVoti(key);
+                        const nuvoInfoMedia = calcolaMediaVoti(key);
                         const testoBadge = document.getElementById(`testo-badge-${idx}`);
                         if (testoBadge) {
                             testoBadge.parentElement.innerHTML = `
                                 <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                <span>${nuovaInfoMedia.media}</span> <small style="opacity:0.8">(${nuovaInfoMedia.conteggio})</small>
+                                <span>${nuvoInfoMedia.media}</span> <small style="opacity:0.8">(${nuvoInfoMedia.conteggio})</small>
                             `;
                         }
                     });
