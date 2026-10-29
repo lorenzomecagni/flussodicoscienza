@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redazione - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
-    <!-- SDK Firebase Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -64,7 +63,7 @@
                 sessionStorage.setItem("owner_logged", "true");
                 mostraPannello();
             } else {
-                alert("Password errata! Accesso negato.");
+                alert("Password errata!");
                 document.getElementById("owner-password").value = "";
             }
         };
@@ -83,7 +82,7 @@
             await caricaProposteRedazione();
         }
 
-        // --- GESTIONE ARTICOLI ---
+        // ARTICOLI
         document.getElementById("file-immagine").addEventListener("change", function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -91,7 +90,7 @@
                 reader.onload = function(uploadEvent) {
                     const base64String = uploadEvent.target.result;
                     document.getElementById("immagine-base64").value = base64String;
-                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
+                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -137,7 +136,6 @@
                 document.getElementById("preview-container").innerHTML = "";
                 await caricaListaGestione();
             } catch (err) {
-                console.error(err);
                 alert("Errore salvataggio articolo.");
             }
         });
@@ -162,9 +160,7 @@
                             <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
                             <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo('${id}')">Elimina</button>
-                        </div>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo('${id}')">Elimina</button>
                     `;
                     container.appendChild(div);
                 });
@@ -174,7 +170,7 @@
         }
 
         window.eliminaArticolo = async function(id) {
-            if (confirm("Sei sicuro di voler eliminare definitivamente questo articolo?")) {
+            if (confirm("Eliminare definitivamente questo articolo?")) {
                 await deleteDoc(doc(db, "articoli", id));
                 await caricaListaGestione();
                 alert("Articolo eliminato.");
@@ -192,7 +188,7 @@
             document.getElementById("btn-annulla-modifica").style.display = "none";
         };
 
-        // --- GESTIONE SONDAGGIO ---
+        // SONDAGGIO E ARCHIVIAZIONE SONDAGGIO
         async function caricaDatiSondaggioRedazione() {
             try {
                 const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
@@ -202,7 +198,7 @@
                     document.getElementById("input-sondaggio").value = data.domanda || "";
                     caricaCampiOpzioni(data.opzioni || ["Sì", "No"]);
                 } else {
-                    caricaCampiOpzioni(["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"]);
+                    caricaCampiOpzioni(["Sì", "No"]);
                 }
             } catch(e) {}
         }
@@ -231,19 +227,46 @@
             const opzioni = Array.from(document.querySelectorAll(".input-opzione")).map(i => i.value.trim()).filter(Boolean);
 
             if (opzioni.length < 2) {
-                alert("Inserisci almeno 2 opzioni valide!");
+                alert("Inserisci almeno 2 opzioni!");
                 return;
             }
 
             try {
                 await setDoc(doc(db, "sondaggioAttivo", "corrente"), { categoria, domanda, opzioni, voti: {}, totaleVotanti: 0 });
-                alert("Sondaggio aggiornato con successo su Firebase!");
+                alert("Sondaggio aggiornato su Firebase!");
             } catch(err) {
                 alert("Errore salvataggio sondaggio.");
             }
         });
 
-        // --- MODERAZIONE DISCUSSIONE & PROPOSTE ---
+        window.archiviaSondaggioCorrente = async function() {
+            if (!confirm("Vuoi archiviare il sondaggio attuale e spostarlo nell'archivio storico?")) return;
+            try {
+                const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
+                if (!snap.exists()) {
+                    alert("Nessun sondaggio attivo da archiviare.");
+                    return;
+                }
+                const datiSondaggio = snap.data();
+                datiSondaggio.dataArchiviazione = new Date().toLocaleDateString();
+
+                await addDoc(collection(db, "archivioSondaggi"), datiSondaggio);
+                await setDoc(doc(db, "sondaggioAttivo", "corrente"), {
+                    categoria: "ATTUALITA'",
+                    domanda: "Nuovo sondaggio da impostare",
+                    opzioni: ["Sì", "No"],
+                    voti: {},
+                    totaleVotanti: 0
+                });
+
+                alert("Sondaggio archiviato con successo!");
+                await caricaDatiSondaggioRedazione();
+            } catch (err) {
+                alert("Errore durante l'archiviazione del sondaggio.");
+            }
+        };
+
+        // MODERAZIONE DISCUSSIONE & PROPOSTE
         async function caricaListaCommentiRedazione() {
             const container = document.getElementById("lista-gestione-commenti");
             container.innerHTML = "Caricamento...";
@@ -323,32 +346,17 @@
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>Area Riservata Owner</p>
         <nav class="main-nav">
-            <a href="index.html">
-                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
-            </a>
-            <a href="leggi.html">
-                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
-            </a>
-            <a href="vota.html">
-                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
-            </a>
-            <a href="proponi.html">
-                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
-            </a>
-            <a href="discuti.html">
-                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
-            </a>
-            <a href="archivio.html">
-                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
-            </a>
-            <a href="redazione.html" class="active btn-owner">
-                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
-            </a>
+            <a href="index.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home</a>
+            <a href="leggi.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi</a>
+            <a href="vota.html"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota</a>
+            <a href="proponi.html"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi</a>
+            <a href="discuti.html"><svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti</a>
+            <a href="archivio.html"><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio</a>
+            <a href="redazione.html" class="active btn-owner"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione</a>
         </nav>
     </header>
 
     <main class="container">
-        <!-- Schermata di Login -->
         <div id="login-box" class="form-container">
             <h2>Area Redazione</h2>
             <p>Inserisci la password per accedere al pannello di controllo.</p>
@@ -358,13 +366,11 @@
             <button type="button" class="btn-pubblica" onclick="verificaPassword()">Accedi</button>
         </div>
 
-        <!-- Pannello di Controllo -->
         <div id="redazione-panel" style="display: none;">
             <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
                 <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="effettuaLogout()">Esci / Logout</button>
             </div>
 
-            <!-- Pubblica Articolo -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2 id="form-title">Pubblica un Nuovo Articolo</h2>
                 <form id="form-articolo" style="margin-top: 25px;">
@@ -411,15 +417,16 @@
                 </form>
             </div>
 
-            <!-- Gestione Articoli -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2>Gestione Articoli</h2>
                 <div id="lista-gestione-articoli" style="margin-top: 20px;">Caricamento...</div>
             </div>
 
-            <!-- Sondaggio -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <h2>Sondaggio</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Sondaggio Attivo</h2>
+                    <button type="button" class="btn-cat" style="background:#b45309; color:#fff; border-color:#b45309;" onclick="archiviaSondaggioCorrente()">Archivia Sondaggio Attuale</button>
+                </div>
                 <form id="form-sondaggio" style="margin-top: 25px;">
                     <div class="form-group">
                         <label>Categoria del Sondaggio</label>
@@ -443,13 +450,11 @@
                 </form>
             </div>
 
-            <!-- Moderazione Discussione -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2>Moderazione Discussione</h2>
                 <div id="lista-gestione-commenti" style="margin-top: 20px;">Caricamento...</div>
             </div>
 
-            <!-- Proposte -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2>Proposte degli Utenti</h2>
                 <div id="lista-proposte-redazione" style="margin-top: 20px;">Caricamento...</div>
