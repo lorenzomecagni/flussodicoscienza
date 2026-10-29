@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redazione - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
-    <!-- SDK di Firebase Firestore -->
+    <!-- SDK Firebase Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -21,14 +21,29 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
         const HASH_PASSWORD_CORRETTO = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
 
         document.addEventListener("DOMContentLoaded", async () => {
+            generaTitoloDinamico();
             if (sessionStorage.getItem("owner_logged") === "true") {
                 mostraPannello();
             }
         });
+
+        function generaTitoloDinamico() {
+            const testoTitolo = "Flusso di Coscienza";
+            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
+            const h1Element = document.getElementById("titolo-dinamico");
+            if (h1Element) {
+                h1Element.innerHTML = "";
+                for (let i = 0; i < testoTitolo.length; i++) {
+                    const span = document.createElement("span");
+                    span.innerText = testoTitolo[i];
+                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
+                    h1Element.appendChild(span);
+                }
+            }
+        }
 
         window.verificaPassword = async function() {
             const pwd = document.getElementById("owner-password").value;
@@ -40,7 +55,8 @@
                 sessionStorage.setItem("owner_logged", "true");
                 mostraPannello();
             } else {
-                alert("Password errata!");
+                alert("Password errata! Accesso negato.");
+                document.getElementById("owner-password").value = "";
             }
         };
 
@@ -55,6 +71,7 @@
             await caricaListaGestione();
             await caricaDatiSondaggioRedazione();
             await caricaListaCommentiRedazione();
+            await caricaProposteRedazione();
         }
 
         // --- ARTICOLI ---
@@ -65,15 +82,27 @@
                 reader.onload = function(uploadEvent) {
                     const base64String = uploadEvent.target.result;
                     document.getElementById("immagine-base64").value = base64String;
-                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;">`;
+                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        window.formatText = function(command) {
-            document.execCommand(command, false, null);
+        window.triggerArticoloImmagine = () => document.getElementById("file-img-articolo").click();
+        window.inserisciImmagineArticolo = function(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.execCommand('insertImage', false, e.target.result);
+                    document.getElementById('editor-testo').focus();
+                };
+                reader.readAsDataURL(file);
+            }
+            input.value = "";
         };
+
+        window.formatText = (command) => { document.execCommand(command, false, null); document.getElementById('editor-testo').focus(); };
 
         document.getElementById("form-articolo").addEventListener("submit", async function(e) {
             e.preventDefault();
@@ -87,11 +116,10 @@
             try {
                 if (editId === "-1") {
                     await addDoc(collection(db, "articoli"), { titolo, categoria, immagine, testo, data, timestamp: Date.now() });
-                    alert("Articolo pubblicato su Firebase!");
+                    alert("Articolo pubblicato con successo!");
                 } else {
-                    const docRef = doc(db, "articoli", editId);
-                    await updateDoc(docRef, { titolo, categoria, immagine: immagine || undefined, testo });
-                    alert("Articolo modificato!");
+                    await updateDoc(doc(db, "articoli", editId), { titolo, categoria, immagine: immagine || undefined, testo });
+                    alert("Articolo modificato con successo!");
                     annullaModifica();
                 }
                 document.getElementById("form-articolo").reset();
@@ -100,7 +128,7 @@
                 document.getElementById("preview-container").innerHTML = "";
                 await caricaListaGestione();
             } catch (err) {
-                alert("Errore durante il salvataggio.");
+                alert("Errore salvataggio articolo.");
             }
         });
 
@@ -120,37 +148,51 @@
                     const div = document.createElement("div");
                     div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
                     div.innerHTML = `
-                        <div><strong>${art.titolo}</strong><br><small>[${art.categoria}] - ${art.data}</small></div>
+                        <div>
+                            <strong style="font-size:1.1rem; color:#111;">${art.titolo}</strong><br>
+                            <small style="color:#666;">[${art.categoria}] - ${art.data}</small>
+                        </div>
                         <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn-cat" onclick="eliminaArticolo('${id}')" style="background:#991b1b; color:#fff;">Elimina</button>
+                            <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaArticolo('${id}')">Elimina</button>
                         </div>
                     `;
                     container.appendChild(div);
                 });
-            } catch (err) {
-                container.innerHTML = "<p>Errore caricamento.</p>";
+            } catch (e) {
+                container.innerHTML = "<p>Errore di caricamento.</p>";
             }
         }
 
         window.eliminaArticolo = async function(id) {
-            if (confirm("Eliminare questo articolo?")) {
+            if (confirm("Sei sicuro di voler eliminare definitivamente questo articolo?")) {
                 await deleteDoc(doc(db, "articoli", id));
                 await caricaListaGestione();
                 alert("Articolo eliminato.");
             }
         };
 
-        // --- SONDAGGIO ATTIVO ---
+        window.annullaModifica = function() {
+            document.getElementById("edit-index").value = "-1";
+            document.getElementById("form-articolo").reset();
+            document.getElementById("editor-testo").innerHTML = "";
+            document.getElementById("immagine-base64").value = "";
+            document.getElementById("preview-container").innerHTML = "";
+            document.getElementById("form-title").innerText = "Pubblica un Nuovo Articolo";
+            document.getElementById("btn-submit-articolo").innerText = "Pubblica";
+            document.getElementById("btn-annulla-modifica").style.display = "none";
+        };
+
+        // --- SONDAGGIO ---
         async function caricaDatiSondaggioRedazione() {
             try {
-                const docSnap = await getDocs(collection(db, "sondaggioAttivo"));
-                if (!docSnap.empty) {
-                    const data = docSnap.docs[0].data();
+                const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
+                if (snap.exists()) {
+                    const data = snap.data();
                     document.getElementById("categoria-sondaggio").value = data.categoria || "ATTUALITA'";
                     document.getElementById("input-sondaggio").value = data.domanda || "";
-                    caricaCampiOpzioni(data.opzioni || []);
+                    caricaCampiOpzioni(data.opzioni || ["Sì", "No"]);
                 } else {
-                    caricaCampiOpzioni(["Sì", "No"]);
+                    caricaCampiOpzioni(["Sì, inevitabilmente", "No, stimolerà nuove forme di pensiero", "Dipende da come la utilizzeremo"]);
                 }
             } catch(e) {}
         }
@@ -179,19 +221,19 @@
             const opzioni = Array.from(document.querySelectorAll(".input-opzione")).map(i => i.value.trim()).filter(Boolean);
 
             if (opzioni.length < 2) {
-                alert("Inserisci almeno 2 opzioni!");
+                alert("Inserisci almeno 2 opzioni valide!");
                 return;
             }
 
             try {
                 await setDoc(doc(db, "sondaggioAttivo", "corrente"), { categoria, domanda, opzioni, voti: {}, totaleVotanti: 0 });
-                alert("Sondaggio aggiornato su Firebase!");
+                alert("Sondaggio aggiornato con successo su Firebase!");
             } catch(err) {
                 alert("Errore salvataggio sondaggio.");
             }
         });
 
-        // --- DISCUSSIONE ---
+        // --- DISCUSSIONE & PROPOSTE ---
         async function caricaListaCommentiRedazione() {
             const container = document.getElementById("lista-gestione-commenti");
             container.innerHTML = "Caricamento...";
@@ -199,7 +241,7 @@
                 const querySnapshot = await getDocs(collection(db, "commenti"));
                 container.innerHTML = "";
                 if (querySnapshot.empty) {
-                    container.innerHTML = "<p>Nessun commento presente.</p>";
+                    container.innerHTML = "<p>Nessun intervento presente.</p>";
                     return;
                 }
                 querySnapshot.forEach((documento) => {
@@ -209,10 +251,10 @@
                     div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #d4cbb8; display: flex; justify-content: space-between; align-items: center;";
                     div.innerHTML = `
                         <div>
-                            <strong>${com.autore}</strong> <small>(${com.data})</small>
-                            <p style="margin: 5px 0 0 0;">${com.testo}</p>
+                            <strong style="color:#111;">${com.autore}</strong> <small style="color:#666;">(${com.data})</small>
+                            <p style="margin: 6px 0 0 0; color:#333;">${com.testo}</p>
                         </div>
-                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff;" onclick="eliminaCommento('${id}')">Elimina</button>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="eliminaCommentoAgora('${id}')">Elimina</button>
                     `;
                     container.appendChild(div);
                 });
@@ -221,18 +263,54 @@
             }
         }
 
-        window.eliminaCommento = async function(id) {
+        window.eliminaCommentoAgora = async function(id) {
             if (confirm("Eliminare questo commento?")) {
                 await deleteDoc(doc(db, "commenti", id));
                 await caricaListaCommentiRedazione();
                 alert("Commento eliminato.");
             }
         };
+
+        async function caricaProposteRedazione() {
+            const container = document.getElementById("lista-proposte-redazione");
+            container.innerHTML = "Caricamento...";
+            try {
+                const querySnapshot = await getDocs(collection(db, "proposte"));
+                container.innerHTML = "";
+                if (querySnapshot.empty) {
+                    container.innerHTML = "<p>Nessuna proposta ricevuta.</p>";
+                    return;
+                }
+                querySnapshot.forEach((documento) => {
+                    const prop = documento.data();
+                    const id = documento.id;
+                    const div = document.createElement("div");
+                    div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
+                    div.innerHTML = `
+                        <div>
+                            <strong style="font-size:1.1rem; color:#111;">${prop.titolo}</strong><br>
+                            <small style="color:#666;">Autore: ${prop.autore} - Inviato il: ${prop.data}</small>
+                        </div>
+                        <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="scartaProposta('${id}')">Scarta</button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch(e) {
+                container.innerHTML = "<p>Errore caricamento proposte.</p>";
+            }
+        }
+
+        window.scartaProposta = async function(id) {
+            if (confirm("Vuoi scartare ed eliminare questa proposta?")) {
+                await deleteDoc(doc(db, "proposte", id));
+                await caricaProposteRedazione();
+            }
+        };
     </script>
 </head>
 <body>
     <header>
-        <h1 class="titolo-ibrido">Redazione</h1>
+        <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>Area Riservata Owner</p>
         <nav class="main-nav">
             <a href="index.html">Home</a>
@@ -246,21 +324,23 @@
     </header>
 
     <main class="container">
+        <!-- Schermata di Login -->
         <div id="login-box" class="form-container">
             <h2>Area Redazione</h2>
-            <p>Inserisci la password per accedere.</p>
+            <p>Inserisci la password per accedere al pannello di controllo.</p>
             <div class="form-group" style="margin-top: 25px;">
                 <input type="password" id="owner-password" placeholder="Password segreta...">
             </div>
             <button type="button" class="btn-pubblica" onclick="verificaPassword()">Accedi</button>
         </div>
 
+        <!-- Pannello di Controllo -->
         <div id="redazione-panel" style="display: none;">
             <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff;" onclick="effettuaLogout()">Logout</button>
+                <button type="button" class="btn-cat" style="background:#991b1b; color:#fff; border-color:#991b1b;" onclick="effettuaLogout()">Esci / Logout</button>
             </div>
 
-            <!-- Articolo -->
+            <!-- Pubblica Articolo -->
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2 id="form-title">Pubblica un Nuovo Articolo</h2>
                 <form id="form-articolo" style="margin-top: 25px;">
@@ -276,6 +356,8 @@
                             <option value="POLITICA">POLITICA</option>
                             <option value="SCIENZA">SCIENZA</option>
                             <option value="FILOSOFIA">FILOSOFIA</option>
+                            <option value="LETTERATURA">LETTERATURA</option>
+                            <option value="STORIA">STORIA</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -289,10 +371,12 @@
                         <div class="editor-toolbar">
                             <button type="button" onclick="formatText('bold')"><b>B</b></button>
                             <button type="button" onclick="formatText('italic')"><i>I</i></button>
+                            <button type="button" onclick="triggerArticoloImmagine()">🖼️ Immagine</button>
+                            <input type="file" id="file-img-articolo" accept="image/*" style="display: none;" onchange="inserisciImmagineArticolo(this)">
                         </div>
                         <div id="editor-testo" contenteditable="true" class="editor-content"></div>
                     </div>
-                    <button type="submit" id="btn-submit-articolo" class="btn-pubblica">Pubblica su Firebase</button>
+                    <button type="submit" id="btn-submit-articolo" class="btn-pubblica">Pubblica</button>
                 </form>
             </div>
 
@@ -304,10 +388,10 @@
 
             <!-- Sondaggio -->
             <div class="form-container" style="margin-bottom: 40px;">
-                <h2>Sondaggio Attivo</h2>
+                <h2>Sondaggio</h2>
                 <form id="form-sondaggio" style="margin-top: 25px;">
                     <div class="form-group">
-                        <label>Categoria</label>
+                        <label>Categoria del Sondaggio</label>
                         <select id="categoria-sondaggio">
                             <option value="ATTUALITA'">ATTUALITA'</option>
                             <option value="POLITICA">POLITICA</option>
@@ -315,13 +399,13 @@
                             <option value="FILOSOFIA">FILOSOFIA</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="margin-top: 20px;">
                         <label>Domanda</label>
                         <input type="text" id="input-sondaggio" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="margin-top: 20px;">
                         <label>Opzioni di Voto</label>
-                        <div id="container-opzioni" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        <div id="container-opzioni" style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;"></div>
                         <button type="button" class="btn-cat" style="margin-top: 10px;" onclick="aggiungiCampoOpzione()">+ Aggiungi Opzione</button>
                     </div>
                     <button type="submit" class="btn-pubblica" style="margin-top: 20px;">Salva Sondaggio</button>
@@ -332,6 +416,12 @@
             <div class="form-container" style="margin-bottom: 40px;">
                 <h2>Moderazione Discussione</h2>
                 <div id="lista-gestione-commenti" style="margin-top: 20px;">Caricamento...</div>
+            </div>
+
+            <!-- Proposte -->
+            <div class="form-container" style="margin-bottom: 40px;">
+                <h2>Proposte degli Utenti</h2>
+                <div id="lista-proposte-redazione" style="margin-top: 20px;">Caricamento...</div>
             </div>
         </div>
     </main>

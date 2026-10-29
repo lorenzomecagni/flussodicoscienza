@@ -5,10 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vota - Flusso di Coscienza</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .opzione-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+            background: #fdfbf7;
+            border: 1px solid #d4cbb8;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .opzione-card:hover {
+            background: #f4efe6;
+            border-color: #b5a892;
+        }
+        .opzione-card input[type="radio"] {
+            accent-color: #333;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .opzione-card label {
+            cursor: pointer;
+            font-weight: 500;
+            color: #222;
+            flex: 1;
+            margin: 0;
+            text-align: justify;
+        }
+        .risultato-barra-container {
+            margin-bottom: 16px;
+        }
+        .risultato-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #333;
+        }
+        .barra-esterna {
+            background: #e6dfd1;
+            border-radius: 6px;
+            height: 12px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .barra-interna {
+            background: #333;
+            height: 100%;
+            width: 0%;
+            transition: width 0.6s ease;
+            border-radius: 6px;
+        }
+
+        .archivio-sondaggi-section {
+            margin-top: 50px;
+        }
+        .carosello-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .carosello-wrapper {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 20px;
+            scroll-behavior: smooth;
+            width: 100%;
+            padding: 10px 0;
+        }
+        .carosello-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+        .carosello-wrapper::-webkit-scrollbar-thumb {
+            background: #d4cbb8;
+            border-radius: 4px;
+        }
+        .sondaggio-card-archivio {
+            flex: 0 0 100%;
+            max-width: 100%;
+            scroll-snap-align: start;
+            background: #fdfbf7;
+            border: 1px solid #d4cbb8;
+            border-radius: 8px;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+        .btn-carosello {
+            background: #333;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .btn-carosello.prev { left: -20px; }
+        .btn-carosello.next { right: -20px; }
+    </style>
 </head>
 <body>
     <header id="site-header">
-        <h1>Flusso di Coscienza</h1>
+        <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
+        <p>pensieri liberi</p>
         <nav class="main-nav">
             <a href="index.html">Home</a>
             <a href="leggi.html">Leggi</a>
@@ -21,24 +134,43 @@
     </header>
 
     <main class="container">
+        <!-- Sondaggio Principale -->
         <div class="form-container">
-            <span id="categoria-badge" class="categoria"></span>
-            <h2 id="titolo-sondaggio" style="margin-top: 10px;">Caricamento sondaggio...</h2>
+            <div style="margin-bottom: 12px;">
+                <span id="categoria-badge" class="categoria" style="font-size: 0.85rem;"></span>
+            </div>
+            <h2 id="titolo-sondaggio" style="margin: 0 0 20px 0; font-size: 1.8rem; text-align: justify;">Caricamento sondaggio...</h2>
             
-            <div id="opzioni-container" style="margin-top: 20px;"></div>
-            <button type="button" id="btn-vota" class="btn-pubblica" style="margin-top: 20px; display:none;" onclick="inviaVoto()">Invia Voto</button>
+            <form id="sondaggio-form">
+                <div id="opzioni-container" style="margin-top: 15px;"></div>
+                <button type="submit" id="btn-invia-voto" class="btn-pubblica" style="margin-top: 10px; display: none;">Invia Voto</button>
+            </form>
 
-            <div id="area-risultati" style="margin-top: 25px; display:none;">
-                <h3>Risultati in Tempo Reale</h3>
-                <div id="grafico-risultati" style="margin-top: 15px;"></div>
-                <p id="totale-votanti" style="margin-top: 10px; font-weight: bold;"></p>
+            <div id="area-risultati" style="margin-top: 25px; display: none;">
+                <hr style="border: 0; border-top: 1px solid #d4cbb8; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; font-size: 1.2rem;">Risultati in Tempo Reale</h3>
+                <div id="grafico-risultati"></div>
+                <p id="totale-votanti" style="margin-top: 15px; font-size: 0.95rem; color: #555; text-align: right;"></p>
+            </div>
+        </div>
+
+        <!-- Sezione Carosello Sondaggi Archiviati -->
+        <div class="archivio-sondaggi-section" id="sezione-archivio-sondaggi" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 1.5rem; text-align: center;">Archivio Sondaggi</h2>
+            </div>
+            <div class="carosello-container">
+                <button type="button" class="btn-carosello prev" onclick="scorriCarosello(-1)">&#10094;</button>
+                <div class="carosello-wrapper" id="carosello-sondaggi-wrapper"></div>
+                <button type="button" class="btn-carosello next" onclick="scorriCarosello(1)">&#10095;</button>
             </div>
         </div>
     </main>
 
+    <!-- SDK Firebase e logica completa -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
@@ -51,87 +183,215 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
         let sondaggioCorrente = null;
 
-        document.addEventListener("DOMContentLoaded", async () => {
-            const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
-            if (snap.exists()) {
-                sondaggioCorrente = snap.data();
-                document.getElementById("titolo-sondaggio").innerText = sondaggioCorrente.domanda;
-                document.getElementById("categoria-badge").innerText = sondaggioCorrente.categoria;
-                
-                const haVotato = localStorage.getItem("ha_votato_firebase") === "true";
-                if (haVotato) {
-                    mostraRisultati(sondaggioCorrente);
-                } else {
-                    mostraOpzioni(sondaggioCorrente.opzioni);
-                }
+        window.addEventListener("scroll", () => {
+            const header = document.getElementById("site-header");
+            if (window.scrollY > 50) {
+                header.classList.add("scrolled");
             } else {
-                document.getElementById("titolo-sondaggio").innerText = "Nessun sondaggio attivo al momento.";
+                header.classList.remove("scrolled");
             }
         });
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const testoTitolo = "Flusso di Coscienza";
+            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
+            const h1Element = document.getElementById("titolo-dinamico");
+            if (h1Element) {
+                h1Element.innerHTML = "";
+                for (let i = 0; i < testoTitolo.length; i++) {
+                    const span = document.createElement("span");
+                    span.innerText = testoTitolo[i];
+                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
+                    h1Element.appendChild(span);
+                }
+            }
+
+            await caricaSondaggio();
+            await caricaSondaggiArchiviati();
+        });
+
+        function getCategoriaClasse(categoria) {
+            const mapping = {
+                "ATTUALITA'": "cat-attualita",
+                "POLITICA": "cat-politica",
+                "SCIENZA": "cat-scienza",
+                "FILOSOFIA": "cat-filosofia",
+                "LETTERATURA": "cat-letteratura",
+                "STORIA": "cat-storia"
+            };
+            return mapping[categoria] || "cat-filosofia";
+        }
+
+        async function caricaSondaggio() {
+            try {
+                const snap = await getDoc(doc(db, "sondaggioAttivo", "corrente"));
+                if (snap.exists()) {
+                    sondaggioCorrente = snap.data();
+                    const badge = document.getElementById("categoria-badge");
+                    badge.innerText = sondaggioCorrente.categoria || "ATTUALITA'";
+                    badge.className = `categoria ${getCategoriaClasse(sondaggioCorrente.categoria)}`;
+
+                    document.getElementById("titolo-sondaggio").innerText = sondaggioCorrente.domanda;
+
+                    const haVotato = localStorage.getItem("ha_votato_firebase_sondaggio") === "true";
+                    if (haVotato) {
+                        document.getElementById("sondaggio-form").style.display = "none";
+                        mostraRisultati(sondaggioCorrente);
+                    } else {
+                        mostraOpzioni(sondaggioCorrente.opzioni);
+                    }
+                } else {
+                    document.getElementById("titolo-sondaggio").innerText = "Nessun sondaggio attivo al momento.";
+                }
+            } catch (err) {
+                console.error("Errore caricamento sondaggio:", err);
+            }
+        }
 
         function mostraOpzioni(opzioni) {
             const container = document.getElementById("opzioni-container");
             container.innerHTML = "";
-            opzioni.forEach((opt, idx) => {
-                container.innerHTML += `
-                    <div style="margin-bottom: 10px;">
-                        <input type="radio" name="voto" id="opt_${idx}" value="${opt}">
-                        <label for="opt_${idx}" style="cursor:pointer; font-weight:bold; margin-left:8px;">${opt}</label>
-                    </div>
+            opzioni.forEach((opt, index) => {
+                const card = document.createElement("div");
+                card.className = "opzione-card";
+                card.innerHTML = `
+                    <input type="radio" name="voto" id="opt_${index}" value="${opt}" required>
+                    <label for="opt_${index}">${opt}</label>
                 `;
+                card.addEventListener("click", (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        document.getElementById(`opt_${index}`).checked = true;
+                    }
+                });
+                container.appendChild(card);
             });
-            document.getElementById("btn-vota").style.display = "block";
+            document.getElementById("btn-invia-voto").style.display = "block";
         }
 
-        window.inviaVoto = async function() {
-            const selezionato = document.querySelector('input[name="voto"]:checked');
-            if (!selezionato) {
-                alert("Seleziona un'opzione!");
+        document.getElementById("sondaggio-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const votoSelezionato = document.querySelector('input[name="voto"]:checked');
+            
+            if (!votoSelezionato) {
+                alert("Seleziona un'opzione prima di votare!");
                 return;
             }
-            const scelta = selezionato.value;
-            const ref = doc(db, "sondaggioAttivo", "corrente");
-            
-            let voti = sondaggioCorrente.voti || {};
-            voti[scelta] = (voti[scelta] || 0) + 1;
-            let totale = (sondaggioCorrente.totaleVotanti || 0) + 1;
 
-            await updateDoc(ref, { voti: voti, totaleVotanti: totale });
-            localStorage.setItem("ha_votato_firebase", "true");
+            const valoreVoto = votoSelezionato.value;
+            const ref = doc(db, "sondaggioAttivo", "corrente");
+
+            let votiMappa = sondaggioCorrente.voti || {};
+            votiMappa[valoreVoto] = (votiMappa[valoreVoto] || 0) + 1;
             
-            sondaggioCorrente.voti = voti;
-            sondaggioCorrente.totaleVotanti = totale;
-            
-            document.getElementById("opzioni-container").style.display = "none";
-            document.getElementById("btn-vota").style.display = "none";
-            mostraRisultati(sondaggioCorrente);
-            alert("Voto registrato con successo!");
-        };
+            let totaleVotanti = (sondaggioCorrente.totaleVotanti || 0) + 1;
+
+            try {
+                await updateDoc(ref, { voti: votiMappa, totaleVotanti: totaleVotanti });
+                localStorage.setItem("ha_votato_firebase_sondaggio", "true");
+
+                sondaggioCorrente.voti = votiMappa;
+                sondaggioCorrente.totaleVotanti = totaleVotanti;
+
+                document.getElementById("sondaggio-form").style.display = "none";
+                mostraRisultati(sondaggioCorrente);
+                alert("Grazie per aver votato! Il tuo voto è stato registrato in tempo reale.");
+            } catch (err) {
+                alert("Errore durante la registrazione del voto.");
+            }
+        });
 
         function mostraRisultati(data) {
-            const grafico = document.getElementById("grafico-risultati");
-            grafico.innerHTML = "";
-            const totale = data.totaleVotanti || 0;
-            const voti = data.voti || {};
+            const areaRisultati = document.getElementById("area-risultati");
+            const graficoContainer = document.getElementById("grafico-risultati");
+            const etichettaTotale = document.getElementById("totale-votanti");
+
+            let votiMappa = data.voti || {};
+            let totaleVotanti = data.totaleVotanti || 0;
+
+            graficoContainer.innerHTML = "";
 
             data.opzioni.forEach(opt => {
-                const count = voti[opt] || 0;
-                const perc = totale > 0 ? ((count / totale) * 100).toFixed(1) : 0;
-                grafico.innerHTML += `
-                    <div style="margin-bottom:10px;">
-                        <span>${opt} - <strong>${perc}%</strong> (${count} voti)</span>
-                        <div style="background:#ddd; border-radius:4px; height:10px; width:100%; margin-top:4px;">
-                            <div style="background:#111; height:100%; width:${perc}%; border-radius:4px;"></div>
-                        </div>
+                let votiOpzione = votiMappa[opt] || 0;
+                let percentuale = totaleVotanti > 0 ? ((votiOpzione / totaleVotanti) * 100).toFixed(1) : 0;
+
+                const div = document.createElement("div");
+                div.className = "risultato-barra-container";
+                div.innerHTML = `
+                    <div class="risultato-info">
+                        <span>${opt}</span>
+                        <span>${percentuale}% (${votiOpzione} voti)</span>
+                    </div>
+                    <div class="barra-esterna">
+                        <div class="barra-interna" style="width: ${percentuale}%;"></div>
                     </div>
                 `;
+                graficoContainer.appendChild(div);
             });
-            document.getElementById("totale-votanti").innerText = `Partecipanti totali: ${totale}`;
-            document.getElementById("area-risultati").style.display = "block";
+
+            etichettaTotale.innerText = `Numero totale partecipanti: ${totaleVotanti}`;
+            areaRisultati.style.display = "block";
         }
+
+        async function caricaSondaggiArchiviati() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "archivioSondaggi"));
+                const sezione = document.getElementById("sezione-archivio-sondaggi");
+                const wrapper = document.getElementById("carosello-sondaggi-wrapper");
+
+                if (querySnapshot.empty) {
+                    sezione.style.display = "none";
+                    return;
+                }
+
+                sezione.style.display = "block";
+                wrapper.innerHTML = "";
+
+                querySnapshot.forEach(docSnap => {
+                    const sondaggio = docSnap.data();
+                    const card = document.createElement("div");
+                    card.className = "sondaggio-card-archivio";
+                    const classeCat = getCategoriaClasse(sondaggio.categoria);
+
+                    let barreHTML = "";
+                    sondaggio.opzioni.forEach(opt => {
+                        let votiOpt = sondaggio.voti[opt] || 0;
+                        let perc = sondaggio.totaleVotanti > 0 ? ((votiOpt / sondaggio.totaleVotanti) * 100).toFixed(1) : 0;
+                        barreHTML += `
+                            <div class="risultato-barra-container">
+                                <div class="risultato-info">
+                                    <span>${opt}</span>
+                                    <span>${perc}% (${votiOpt} voti)</span>
+                                </div>
+                                <div class="barra-esterna">
+                                    <div class="barra-interna" style="width: ${perc}%;"></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span class="categoria ${classeCat}" style="font-size: 0.8rem;">${sondaggio.categoria}</span>
+                            <small style="color: #666;">Archiviato il: ${sondaggio.dataArchiviazione || 'N.D.'}</small>
+                        </div>
+                        <h3 style="margin-bottom: 20px; font-size: 1.15rem; color: #111; text-align: justify;">${sondaggio.domanda}</h3>
+                        <div>${barreHTML}</div>
+                        <p style="margin-top: 15px; font-size: 0.9rem; color: #555; text-align: right;">Numero totale partecipanti: ${sondaggio.totaleVotanti}</p>
+                    `;
+                    wrapper.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Errore archivio sondaggi:", err);
+            }
+        }
+
+        window.scorriCarosello = function(direzione) {
+            const wrapper = document.getElementById("carosello-sondaggi-wrapper");
+            const ampiezzaCard = wrapper.querySelector(".sondaggio-card-archivio").offsetWidth + 20;
+            wrapper.scrollBy({ left: direzione * ampiezzaCard, behavior: 'smooth' });
+        };
     </script>
 </body>
 </html>
