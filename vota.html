@@ -34,6 +34,7 @@
             color: #222;
             flex: 1;
             margin: 0;
+            text-align: justify;
         }
         .risultato-barra-container {
             margin-bottom: 16px;
@@ -61,7 +62,6 @@
             border-radius: 6px;
         }
 
-        /* Stili per il Carosello Sondaggi Archiviati */
         .archivio-sondaggi-section {
             margin-top: 50px;
         }
@@ -119,7 +119,7 @@
     </style>
 </head>
 <body>
-    <header>
+    <header id="site-header">
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>pensieri liberi</p>
         <nav class="main-nav">
@@ -150,10 +150,11 @@
     <main class="container">
         <!-- Sondaggio Principale -->
         <div class="form-container">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="titolo-sondaggio" style="margin: 0;">Topic del Mese</h2>
-                <span id="categoria-badge" style="background: #333; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: 500;"></span>
+            <!-- Categoria SOPRA al quesito -->
+            <div style="margin-bottom: 12px;">
+                <span id="categoria-badge" class="categoria" style="font-size: 0.85rem;"></span>
             </div>
+            <h2 id="titolo-sondaggio" style="margin: 0 0 20px 0; font-size: 1.8rem; text-align: justify;">Topic del Mese</h2>
             
             <form id="sondaggio-form">
                 <div id="opzioni-container" style="margin-top: 15px;"></div>
@@ -183,6 +184,15 @@
     </main>
 
     <script>
+        window.addEventListener("scroll", () => {
+            const header = document.getElementById("site-header");
+            if (window.scrollY > 50) {
+                header.classList.add("scrolled");
+            } else {
+                header.classList.remove("scrolled");
+            }
+        });
+
         document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
@@ -201,9 +211,30 @@
             caricaSondaggiArchiviati();
         });
 
+        function getCategoriaClasse(categoria) {
+            const mapping = {
+                "ATTUALITA'": "cat-attualita",
+                "POLITICA": "cat-politica",
+                "SCIENZA": "cat-scienza",
+                "RELIGIONE": "cat-religione",
+                "ECONOMIA": "cat-economia",
+                "ARTE": "cat-arte",
+                "FILOSOFIA": "cat-filosofia",
+                "LETTERATURA": "cat-letteratura",
+                "MUSICA": "cat-musica",
+                "VIAGGI": "cat-viaggi",
+                "STORIA": "cat-storia",
+                "CINEMA": "cat-cinema",
+                "VIDEOGIOCHI": "cat-videogiochi"
+            };
+            return mapping[categoria] || "cat-filosofia";
+        }
+
         function caricaSondaggio() {
             const categoria = localStorage.getItem("categoria_sondaggio") || "ATTUALITA'";
-            document.getElementById("categoria-badge").innerText = categoria;
+            const badge = document.getElementById("categoria-badge");
+            badge.innerText = categoria;
+            badge.className = `categoria ${getCategoriaClasse(categoria)}`;
 
             const domanda = localStorage.getItem("topic_sondaggio") || "L'intelligenza artificiale sostituirà il pensiero critico umano?";
             document.getElementById("titolo-sondaggio").innerText = domanda;
@@ -311,6 +342,7 @@
             archivio.forEach(sondaggio => {
                 const card = document.createElement("div");
                 card.className = "sondaggio-card-archivio";
+                const classeCat = getCategoriaClasse(sondaggio.categoria);
 
                 let barreHTML = "";
                 sondaggio.opzioni.forEach(opt => {
@@ -331,10 +363,10 @@
 
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span style="background: #333; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">${sondaggio.categoria}</span>
+                        <span class="categoria ${classeCat}" style="font-size: 0.8rem;">${sondaggio.categoria}</span>
                         <small style="color: #666;">Archiviato il: ${sondaggio.dataArchiviazione}</small>
                     </div>
-                    <h3 style="margin-bottom: 20px; font-size: 1.15rem; color: #111;">${sondaggio.domanda}</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 1.15rem; color: #111; text-align: justify;">${sondaggio.domanda}</h3>
                     <div>${barreHTML}</div>
                     <p style="margin-top: 15px; font-size: 0.9rem; color: #555; text-align: right;">Numero totale partecipanti: ${sondaggio.totaleVotanti}</p>
                 `;
