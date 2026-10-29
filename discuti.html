@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discuti - Flusso di Coscienza</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .commento-card {
+            background: #f4f1ea;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #111;
+            position: relative;
+        }
+        .commento-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-like {
+            background: transparent;
+            border: 1px solid #d4cbb8;
+            border-radius: 20px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            color: #333;
+        }
+        .btn-like:hover {
+            background: #e6dfd1;
+            border-color: #b5a892;
+        }
+        .btn-like.liked {
+            background: #111;
+            color: #fff;
+            border-color: #111;
+        }
+        .risposta-card {
+            background: #eadecd;
+            padding: 14px 16px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border-left: 3px solid #555;
+        }
+        .box-rispondi {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fcfbf7;
+            border: 1px solid #d4cbb8;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
+        <p>pensieri liberi</p>
+        <nav class="main-nav">
+            <a href="index.html">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
+            </a>
+            <a href="leggi.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
+            </a>
+            <a href="vota.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
+            </a>
+            <a href="proponi.html">
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
+            </a>
+            <a href="discuti.html" class="active">
+                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
+            </a>
+            <a href="archivio.html">
+                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
+            </a>
+            <a href="redazione.html" class="btn-owner">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
+            </a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="form-container">
+            <h2 id="titolo-dibattito">Dibattito del Mese</h2>
+            <p>Lascia un commento o un pensiero libero in risposta al dibattito mensile.</p>
+            
+            <div class="form-group" style="margin-top: 25px;">
+                <input type="text" id="autore-commento" placeholder="Il tuo nome..." style="margin-bottom: 12px;">
+                <textarea id="testo-commento" rows="4" placeholder="Esprimi il tuo pensiero..."></textarea>
+                <button type="button" class="btn-pubblica" onclick="aggiungiCommento()" style="margin-top: 15px;">Pubblica Intervento</button>
+            </div>
+
+            <div id="lista-commenti" style="margin-top: 30px;"></div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const testoTitolo = "Flusso di Coscienza";
+            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
+            const h1Element = document.getElementById("titolo-dinamico");
+            if (h1Element) {
+                h1Element.innerHTML = "";
+                for (let i = 0; i < testoTitolo.length; i++) {
+                    const span = document.createElement("span");
+                    span.innerText = testoTitolo[i];
+                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
+                    h1Element.appendChild(span);
+                }
+            }
+
+            // Carica argomento dibattito personalizzato
+            const topicDibattito = localStorage.getItem("topic_discussione") || "Dibattito del Mese";
+            document.getElementById("titolo-dibattito").innerText = topicDibattito;
+
+            caricaCommenti();
+        });
+
+        function aggiungiCommento() {
+            const autore = document.getElementById("autore-commento").value.trim() || "Anonimo";
+            const testo = document.getElementById("testo-commento").value.trim();
+            if(!testo) {
+                alert("Il testo del commento non può essere vuoto!");
+                return;
+            }
+
+            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+
+            const nuovoCommento = {
+                id: Date.now(),
+                autore,
+                testo,
+                data: new Date().toLocaleDateString(),
+                likes: 0,
+                risposte: []
+            };
+
+            commenti.unshift(nuovoCommento);
+            localStorage.setItem("commenti_agora", JSON.stringify(commenti));
+
+            document.getElementById("testo-commento").value = "";
+            document.getElementById("autore-commento").value = "";
+
+            caricaCommenti();
+        }
+
+        function caricaCommenti() {
+            const lista = document.getElementById("lista-commenti");
+            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+            let mieiLikes = JSON.parse(localStorage.getItem("like_miei_commenti")) || [];
+
+            // Ordina i commenti per numero di like decrescente (il più votato va in cima)
+            commenti.sort((a, b) => b.likes - a.likes);
+
+            lista.innerHTML = "";
+
+            if (commenti.length === 0) {
+                lista.innerHTML = "<p style='color: #666; font-style: italic;'>Nessun intervento ancora. Sii il primo a esprimere il tuo pensiero!</p>";
+                return;
+            }
+
+            commenti.forEach(com => {
+                const giaMessoLike = mieiLikes.includes(com.id);
+
+                let risposteHtml = "";
+                if (com.risposte && com.risposte.length > 0) {
+                    com.risposte.forEach(resp => {
+                        risposteHtml += `
+                            <div class="risposta-card">
+                                <strong>${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
+                                <p style="margin-top:6px; line-height:1.4; color:#333;">${resp.testo}</p>
+                            </div>
+                        `;
+                    });
+                }
+
+                const div = document.createElement("div");
+                div.className = "commento-card";
+                div.innerHTML = `
+                    <div class="commento-header">
+                        <div>
+                            <strong>${com.autore}</strong> 
+                            <small style="color:#666;">(${com.data})</small>
+                        </div>
+                        <button type="button" class="btn-like ${giaMessoLike ? 'liked' : ''}" onclick="toggleLike(${com.id})">
+                            ❤️ <span>${com.likes}</span>
+                        </button>
+                    </div>
+                    <p style="margin-top:10px; line-height:1.6; color:#222;">${com.testo}</p>
+                    
+                    <div style="margin-top: 12px;">
+                        <button type="button" class="btn-cat" style="font-size: 0.85rem; padding: 6px 12px;" onclick="mostraFormRisposta(${com.id})">Rispondi</button>
+                    </div>
+
+                    <div id="form-risposta-${com.id}" class="box-rispondi" style="display: none;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="autore-risposta-${com.id}" placeholder="Il tuo nome..." style="margin-bottom: 10px;">
+                            <textarea id="testo-risposta-${com.id}" rows="3" placeholder="Scrivi una risposta..."></textarea>
+                            <button type="button" class="btn-pubblica" style="margin-top: 12px; width: auto; padding: 10px 20px;" onclick="inviaRisposta(${com.id})">Invia Risposta</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 12px; padding-left: 20px; border-left: 2px solid #d4cbb8;">
+                        ${risposteHtml}
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+        }
+
+        function toggleLike(id) {
+            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+            let mieiLikes = JSON.parse(localStorage.getItem("like_miei_commenti")) || [];
+
+            const index = commenti.findIndex(c => c.id === id);
+            if (index === -1) return;
+
+            const haGiaVotato = mieiLikes.includes(id);
+
+            if (haGiaVotato) {
+                commenti[index].likes -= 1;
+                mieiLikes = mieiLikes.filter(likeId => likeId !== id);
+            } else {
+                commenti[index].likes += 1;
+                mieiLikes.push(id);
+            }
+
+            localStorage.setItem("commenti_agora", JSON.stringify(commenti));
+            localStorage.setItem("like_miei_commenti", JSON.stringify(mieiLikes));
+
+            caricaCommenti();
+        }
+
+        function mostraFormRisposta(id) {
+            const box = document.getElementById(`form-risposta-${id}`);
+            if (box.style.display === "none" || box.style.display === "") {
+                box.style.display = "block";
+            } else {
+                box.style.display = "none";
+            }
+        }
+
+        function inviaRisposta(commentoId) {
+            const autore = document.getElementById(`autore-risposta-${commentoId}`).value.trim() || "Anonimo";
+            const testo = document.getElementById(`testo-risposta-${commentoId}`).value.trim();
+
+            if (!testo) {
+                alert("La risposta non può essere vuota!");
+                return;
+            }
+
+            let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
+            const commento = commenti.find(c => c.id === commentoId);
+
+            if (commento) {
+                if (!commento.risposte) {
+                    commento.risposte = [];
+                }
+
+                commento.risposte.push({
+                    id: Date.now(),
+                    autore,
+                    testo,
+                    data: new Date().toLocaleDateString()
+                });
+
+                localStorage.setItem("commenti_agora", JSON.stringify(commenti));
+                caricaCommenti();
+            }
+        }
+    </script>
+</body>
+</html>

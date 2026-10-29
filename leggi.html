@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leggi Tutti - Flusso di Coscienza</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Sezione Titolo "Articoli" con icona vettoriale e animazione */
+        .section-title-articoli {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 2rem;
+            margin: 40px 0 20px 0;
+            color: var(--text-color, #222);
+            font-weight: 700;
+        }
+        .section-title-articoli svg {
+            width: 32px;
+            height: 32px;
+            fill: currentColor;
+            animation: pulse-book 2s infinite ease-in-out;
+        }
+        @keyframes pulse-book {
+            0% { transform: scale(1); opacity: 0.85; }
+            50% { transform: scale(1.12); opacity: 1; filter: drop-shadow(0 0 5px rgba(0, 123, 255, 0.5)); }
+            100% { transform: scale(1); opacity: 0.85; }
+        }
+
+        /* Posizionamento relativo per permettere il badge in alto a destra della card */
+        .card-articolo {
+            position: relative;
+        }
+
+        /* Badge di valutazione media in alto a destra dell'articolo */
+        .articolo-badge-voto {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            backdrop-filter: blur(4px);
+            z-index: 5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .articolo-badge-voto svg {
+            width: 14px;
+            height: 14px;
+            fill: #ffc107;
+        }
+
+        /* Sistema di valutazione a barra trascinabile migliorato */
+        .valutazione-box {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .valutazione-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #444;
+            font-weight: 500;
+        }
+        .valutazione-header strong {
+            color: #007bff;
+            font-size: 1rem;
+        }
+
+        /* Stile moderno per lo slider (range) */
+        .valutazione-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            transition: background 0.3s ease;
+        }
+        .valutazione-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.4);
+        }
+        .valutazione-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #0056b3;
+        }
+        .valutazione-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
+        <p>pensieri liberi</p>
+        <nav class="main-nav">
+            <a href="index.html">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
+            </a>
+            <a href="leggi.html" class="active">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
+            </a>
+            <a href="vota.html">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
+            </a>
+            <a href="proponi.html">
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
+            </a>
+            <a href="discuti.html">
+                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
+            </a>
+            <a href="archivio.html">
+                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
+            </a>
+            <a href="redazione.html" class="btn-owner">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
+            </a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Titolo "Articoli" con grafica vettoriale animata -->
+        <h2 class="section-title-articoli">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 2H9c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H9V4h10v16zM5 4H3v16h2V4z"/>
+            </svg>
+            Articoli
+        </h2>
+        <div id="lista-completa" class="articoli-grid"></div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const testoTitolo = "Flusso di Coscienza";
+            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
+            const h1Element = document.getElementById("titolo-dinamico");
+            if (h1Element) {
+                h1Element.innerHTML = "";
+                for (let i = 0; i < testoTitolo.length; i++) {
+                    const span = document.createElement("span");
+                    span.innerText = testoTitolo[i];
+                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
+                    h1Element.appendChild(span);
+                }
+            }
+
+            function getCategoriaInfo(categoria) {
+                const mapping = {
+                    "ATTUALITA'": { classe: "cat-attualita", img: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800" },
+                    "POLITICA": { classe: "cat-politica", img: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800" },
+                    "SCIENZA": { classe: "cat-scienza", img: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800" },
+                    "RELIGIONE": { classe: "cat-religione", img: "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800" },
+                    "ECONOMIA": { classe: "cat-economia", img: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800" },
+                    "ARTE": { classe: "cat-arte", img: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800" },
+                    "FILOSOFIA": { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=800" },
+                    "LETTERATURA": { classe: "cat-letteratura", img: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=800" },
+                    "MUSICA": { classe: "cat-musica", img: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800" },
+                    "VIAGGI": { classe: "cat-viaggi", img: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800" },
+                    "STORIA": { classe: "cat-storia", img: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=800" },
+                    "CINEMA": { classe: "cat-cinema", img: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800" },
+                    "VIDEOGIOCHI": { classe: "cat-videogiochi", img: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800" }
+                };
+                return mapping[categoria] || { classe: "cat-filosofia", img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800" };
+            }
+
+            const container = document.getElementById("lista-completa");
+            let articoli = JSON.parse(localStorage.getItem("miei_articoli")) || [];
+            container.innerHTML = "";
+            
+            if(articoli.length === 0) {
+                container.innerHTML = "<p>Nessun articolo presente al momento.</p>";
+                return;
+            }
+
+            // Recupera archivio globale dei voti registrati per ogni articolo
+            // Struttura salvata: { "articleKey": { "userId1": voto, "userId2": voto, ... } }
+            let archivioVoti = JSON.parse(localStorage.getItem("archivio_voti_articoli")) || {};
+            
+            // Per retrocompatibilità con vecchie chiavi singole salvate in precedenza
+            let vecchieValutazioni = JSON.parse(localStorage.getItem("valutazioni_articoli")) || {};
+            for (let k in vecchieValutazioni) {
+                if (!archivioVoti[k]) {
+                    archivioVoti[k] = { "Lettore_Locale": vecchieValutazioni[k] };
+                }
+            }
+
+            // Funzione di utilità per calcolare la media dei voti registrati
+            function calcolaMediaVoti(key) {
+                const votiMap = archivioVoti[key];
+                if (!votiMap || Object.keys(votiMap).length === 0) return { media: "N.D.", conteggio: 0 };
+                let valori = Object.values(votiMap);
+                let somma = valori.reduce((acc, val) => acc + val, 0);
+                let media = (somma / valori.length).toFixed(1);
+                return { media: media, conteggio: valori.length };
+            }
+
+            articoli.forEach((articolo, index) => {
+                const card = document.createElement("article");
+                card.className = "card-articolo";
+                const info = getCategoriaInfo(articolo.categoria);
+                const immagineSrc = articolo.immagine ? articolo.immagine : info.img;
+
+                const articleKey = `art_${index}_${articolo.titolo.replace(/\s+/g, '_')}`;
+                
+                // Voto personale del dispositivo (default a 5 se non votato)
+                let votoPersonale = 5;
+                if (archivioVoti[articleKey] && archivioVoti[articleKey]["Lettore_Locale"] !== undefined) {
+                    votoPersonale = archivioVoti[articleKey]["Lettore_Locale"];
+                }
+
+                const infoMedia = calcolaMediaVoti(articleKey);
+
+                card.innerHTML = `
+                    <!-- Badge valutazione in alto a destra -->
+                    <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate">
+                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        <span id="testo-badge-${index}">${infoMedia.media}</span> <small style="opacity:0.8">(${infoMedia.conteggio})</small>
+                    </div>
+
+                    <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img">
+                    <div class="card-contenuto">
+                        <span class="categoria ${info.classe}">${articolo.categoria}</span>
+                        <h3>${articolo.titolo}</h3>
+                        <small>Pubblicato il: ${articolo.data}</small>
+                        <div class="testo-articolo">${articolo.testo}</div>
+                        
+                        <!-- Barra di valutazione trascinabile pulita -->
+                        <div class="valutazione-box">
+                            <div class="valutazione-header">
+                                <span>Valuta questo articolo:</span>
+                                <strong id="valore-voto-${index}">${votoPersonale} / 10</strong>
+                            </div>
+                            <input type="range" min="1" max="10" value="${votoPersonale}" class="valutazione-slider" data-key="${articleKey}" data-index="${index}">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Gestione interazione slider di valutazione in tempo reale
+            document.querySelectorAll(".valutazione-slider").forEach(slider => {
+                slider.addEventListener("input", (e) => {
+                    const idx = e.target.getAttribute("data-index");
+                    const key = e.target.getAttribute("data-key");
+                    const val = parseInt(e.target.value);
+
+                    // Aggiorna etichetta numerica locale della barra
+                    document.getElementById(`valore-voto-${idx}`).innerText = `${val} / 10`;
+
+                    // Registra il voto nell'archivio locale del browser
+                    if (!archivioVoti[key]) {
+                        archivioVoti[key] = {};
+                    }
+                    archivioVoti[key]["Lettore_Locale"] = val;
+                    localStorage.setItem("archivio_voti_articoli", JSON.stringify(archivioVoti));
+
+                    // Ricalcola la media e aggiorna istantaneamente il badge in alto a destra
+                    const nuovaInfoMedia = calcolaMediaVoti(key);
+                    const testoBadge = document.getElementById(`testo-badge-${idx}`);
+                    if (testoBadge) {
+                        testoBadge.parentElement.innerHTML = `
+                            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span>${nuovaInfoMedia.media}</span> <small style="opacity:0.8">(${nuovaInfoMedia.conteggio})</small>
+                        `;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
