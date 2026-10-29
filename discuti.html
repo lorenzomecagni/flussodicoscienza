@@ -47,6 +47,7 @@
             border-radius: 6px;
             margin-top: 10px;
             border-left: 3px solid #555;
+            text-align: justify;
         }
         .box-rispondi {
             margin-top: 15px;
@@ -55,10 +56,14 @@
             border: 1px solid #d4cbb8;
             border-radius: 6px;
         }
+        .commento-card p {
+            text-align: justify;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
-    <header>
+    <header id="site-header">
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>pensieri liberi</p>
         <nav class="main-nav">
@@ -88,7 +93,7 @@
 
     <main class="container">
         <div class="form-container">
-            <h2 id="titolo-dibattito">Dibattito del Mese</h2>
+            <h2 id="titolo-dibattito" style="text-align: justify;">Dibattito del Mese</h2>
             <p>Lascia un commento o un pensiero libero in risposta al dibattito mensile.</p>
             
             <div class="form-group" style="margin-top: 25px;">
@@ -102,6 +107,15 @@
     </main>
 
     <script>
+        window.addEventListener("scroll", () => {
+            const header = document.getElementById("site-header");
+            if (window.scrollY > 50) {
+                header.classList.add("scrolled");
+            } else {
+                header.classList.remove("scrolled");
+            }
+        });
+
         document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
@@ -116,7 +130,6 @@
                 }
             }
 
-            // Carica argomento dibattito personalizzato
             const topicDibattito = localStorage.getItem("topic_discussione") || "Dibattito del Mese";
             document.getElementById("titolo-dibattito").innerText = topicDibattito;
 
@@ -156,7 +169,6 @@
             let commenti = JSON.parse(localStorage.getItem("commenti_agora")) || [];
             let mieiLikes = JSON.parse(localStorage.getItem("like_miei_commenti")) || [];
 
-            // Ordina i commenti per numero di like decrescente (il più votato va in cima)
             commenti.sort((a, b) => b.likes - a.likes);
 
             lista.innerHTML = "";
@@ -175,7 +187,7 @@
                         risposteHtml += `
                             <div class="risposta-card">
                                 <strong>${resp.autore}</strong> <small style="color:#666;">(${resp.data})</small>
-                                <p style="margin-top:6px; line-height:1.4; color:#333;">${resp.testo}</p>
+                                <p style="margin-top:6px; line-height:1.4; color:#333; text-align: justify; word-break: break-word;">${resp.testo}</p>
                             </div>
                         `;
                     });
