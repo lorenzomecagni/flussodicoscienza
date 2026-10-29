@@ -8,102 +8,75 @@
 </head>
 <body>
     <header id="site-header">
-        <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
-        <p>pensieri liberi</p>
+        <h1>Flusso di Coscienza</h1>
         <nav class="main-nav">
-            <a href="index.html">
-                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
-            </a>
-            <a href="leggi.html">
-                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Leggi
-            </a>
-            <a href="vota.html">
-                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg> Vota
-            </a>
-            <a href="proponi.html" class="active">
-                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Proponi
-            </a>
-            <a href="discuti.html">
-                <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> Discuti
-            </a>
-            <a href="archivio.html">
-                <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg> Archivio
-            </a>
-            <a href="redazione.html" class="btn-owner">
-                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Redazione
-            </a>
+            <a href="index.html">Home</a>
+            <a href="leggi.html">Leggi</a>
+            <a href="vota.html">Vota</a>
+            <a href="proponi.html" class="active">Proponi</a>
+            <a href="discuti.html">Discuti</a>
+            <a href="archivio.html">Archivio</a>
+            <a href="redazione.html" class="btn-owner">Redazione</a>
         </nav>
     </header>
 
     <main class="container">
         <div class="form-container">
             <h2>Proponi il tuo Articolo</h2>
-            <p>Compila il modulo per inviare la tua idea o il tuo pezzo completo alla redazione per la revisione.</p>
+            <p>Invia la tua idea o il tuo pezzo alla redazione.</p>
             <form id="proposta-form" style="margin-top: 25px;">
                 <div class="form-group">
-                    <label for="autore">Autore</label>
+                    <label>Autore</label>
                     <input type="text" id="autore" required placeholder="Nome o pseudonimo...">
                 </div>
                 <div class="form-group">
-                    <label for="titolo-prop">Titolo</label>
+                    <label>Titolo</label>
                     <input type="text" id="titolo-prop" required placeholder="Titolo...">
                 </div>
                 <div class="form-group">
-                    <label for="testo-prop">Testo dell'articolo</label>
-                    <textarea id="testo-prop" rows="8" required placeholder="Scrivi qui il tuo articolo..."></textarea>
+                    <label>Testo dell'articolo</label>
+                    <textarea id="testo-prop" rows="8" required placeholder="Scrivi qui..."></textarea>
                 </div>
                 <button type="submit" class="btn-pubblica">Invia alla Redazione</button>
             </form>
         </div>
     </main>
 
-    <script>
-        window.addEventListener("scroll", () => {
-            const header = document.getElementById("site-header");
-            if (window.scrollY > 50) {
-                header.classList.add("scrolled");
-            } else {
-                header.classList.remove("scrolled");
-            }
-        });
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        document.addEventListener("DOMContentLoaded", () => {
-            const testoTitolo = "Flusso di Coscienza";
-            const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
-            const h1Element = document.getElementById("titolo-dinamico");
-            if (h1Element) {
-                h1Element.innerHTML = "";
-                for (let i = 0; i < testoTitolo.length; i++) {
-                    const span = document.createElement("span");
-                    span.innerText = testoTitolo[i];
-                    span.className = classiFont[Math.floor(Math.random() * classiFont.length)];
-                    h1Element.appendChild(span);
-                }
-            }
-        });
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbvUTpkonXNDj5f7amxWPilzWmYYuwywI",
+            authDomain: "flusso-di-coscienza-4e96d.firebaseapp.com",
+            projectId: "flusso-di-coscienza-4e96d",
+            storageBucket: "flusso-di-coscienza-4e96d.firebasestorage.app",
+            messagingSenderId: "617712339143",
+            appId: "1:617712339143:web:75561b57885ff8c44ad6e2"
+        };
 
-        document.getElementById("proposta-form").addEventListener("submit", function(e) {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById("proposta-form").addEventListener("submit", async function(e) {
             e.preventDefault();
             const autore = document.getElementById("autore").value.trim();
             const titolo = document.getElementById("titolo-prop").value.trim();
             const testo = document.getElementById("testo-prop").value.trim();
 
-            let proposte = JSON.parse(localStorage.getItem("proposte_articoli")) || [];
-
-            const nuovaProposta = {
-                id: Date.now(),
-                autore,
-                titolo,
-                testo,
-                data: new Date().toLocaleDateString(),
-                interessante: false
-            };
-
-            proposte.push(nuovaProposta);
-            localStorage.setItem("proposte_articoli", JSON.stringify(proposte));
-
-            alert("Articolo inviato con successo! La redazione lo esaminerà presto.");
-            window.location.href = "index.html";
+            try {
+                await addDoc(collection(db, "proposte"), {
+                    autore,
+                    titolo,
+                    testo,
+                    data: new Date().toLocaleDateString(),
+                    timestamp: Date.now()
+                });
+                alert("Articolo inviato con successo alla redazione!");
+                window.location.href = "index.html";
+            } catch (err) {
+                alert("Errore nell'invio della proposta.");
+            }
         });
     </script>
 </body>
