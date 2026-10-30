@@ -292,7 +292,8 @@
                     card.innerHTML = `
                         <div class="articolo-badge-voto" id="badge-voto-${index}" title="Media basata su ${infoMedia.conteggio} valutazioni registrate nel cloud">
                             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            <span id="testo-badge-${index}">${infoMedia.media}</span> <small style="opacity:0.8">(${infoMedia.conteggio})</small>
+                            <span id="testo-badge-${index}">${infoMedia.media}</span> 
+                            <small id="conteggio-badge-${index}" style="opacity:0.8">(${infoMedia.conteggio})</small>
                         </div>
 
                         <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img">
@@ -335,14 +336,13 @@
                             console.error("Errore salvataggio voto su Firestore:", err);
                         }
 
+                        // Aggiornamento pulito senza ricreare gli elementi DOM (evita i duplicati)
                         const nuvoInfoMedia = calcolaMediaVoti(key);
                         const testoBadge = document.getElementById(`testo-badge-${idx}`);
-                        if (testoBadge) {
-                            testoBadge.parentElement.innerHTML = `
-                                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                <span>${nuvoInfoMedia.media}</span> <small style="opacity:0.8">(${nuvoInfoMedia.conteggio})</small>
-                            `;
-                        }
+                        const conteggioBadge = document.getElementById(`conteggio-badge-${idx}`);
+
+                        if (testoBadge) testoBadge.innerText = nuvoInfoMedia.media;
+                        if (conteggioBadge) conteggioBadge.innerText = `(${nuvoInfoMedia.conteggio})`;
                     });
                 });
 
