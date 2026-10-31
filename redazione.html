@@ -160,10 +160,10 @@
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px;">
                             <svg style="width:20px; height:20px; fill:currentColor;" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                            Copertina
+                            Immagine di Copertina (Carica da PC)
                         </label>
                         <input type="file" id="file-immagine" accept="image/*">
-                        <input type="hidden" id="immagine-base64">
+                        <input type="hidden" id="immagine-url">
                         <div id="preview-container" style="margin-top: 10px;"></div>
                     </div>
 
@@ -184,10 +184,10 @@
                             <button type="button" onclick="formatText('justifyFull')" title="Giustifica testo">
                                 <svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z"/></svg>
                             </button>
-                            <button type="button" onclick="triggerArticoloImmagine()" title="Inserisci immagine">
-                                <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> Immagine
+                            <button type="button" onclick="triggerArticoloImmagine()" title="Inserisci immagine dal PC">
+                                <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> Immagine PC
                             </button>
-                            <input type="file" id="file-img-articolo" accept="image/*" style="display: none;" onchange="inserisciImmagineArticolo(this)">
+                            <input type="file" id="file-img-articolo" accept="image/*" style="display: none;" onchange="inserisciImmagineTestoDaPC(this)">
                         </div>
                         <div id="editor-testo" contenteditable="true" class="editor-content"></div>
                     </div>
@@ -392,8 +392,8 @@
         }
 
         async function verificaPassword() {
-            const pwd = document.getElementById("owner-password").value;
-            const hashDigitato = await sha256(pwd);
+            const pwd = document.jsdelivr || document.getElementById("owner-password").value;
+            const hashDigitato = await sha256(document.getElementById("owner-password").value);
 
             if (hashDigitato === HASH_PASSWORD_CORRETTO) {
                 sessionStorage.setItem("owner_logged", "true");
@@ -423,40 +423,64 @@
             location.reload();
         }
 
-        document.getElementById("file-immagine").addEventListener("change", function(e) {
+        // Funzione universale per caricare un'immagine da PC su un server gratuito e ottenere il link
+        async function uploadImmagineSuImgBB(file) {
+            const formData = new FormData();
+            formData.append("image", file);
+            
+            // Chiave pubblica gratuita per upload anonimo
+            const response = await fetch("https://api.imgbb.com/1/upload?key=6d207e024de0736630f9a738a903da04", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+            if (data && data.success) {
+                return data.data.url;
+            } else {
+                throw new Error("Errore durante l'upload dell'immagine.");
+            }
+        }
+
+        // Gestione copertina da PC
+        document.getElementById("file-immagine").addEventListener("change", async function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    const base64String = uploadEvent.target.result;
-                    document.getElementById("immagine-base64").value = base64String;
-                    document.getElementById("preview-container").innerHTML = `<img src="${base64String}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
-                };
-                reader.readAsDataURL(file);
+                try {
+                    document.getElementById("preview-container").innerHTML = "<p style='font-style:italic;'>Caricamento immagine in corso...</p>";
+                    const url = await uploadImmagineSuImgBB(file);
+                    document.getElementById("immagine-url").value = url;
+                    document.getElementById("preview-container").innerHTML = `<img src="${url}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
+                } catch (err) {
+                    console.error(err);
+                    alert("Errore durante il caricamento dell'immagine.");
+                    document.getElementById("preview-container").innerHTML = "";
+                }
             }
         });
+
+        function formatText(command) {
+            document.execCommand(command, false, null);
+            document.getElementById('editor-testo').focus();
+        }
 
         function triggerArticoloImmagine() {
             document.getElementById("file-img-articolo").click();
         }
 
-        function inserisciImmagineArticolo(input) {
+        async function inserisciImmagineTestoDaPC(input) {
             const file = input.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64Img = e.target.result;
-                    document.execCommand('insertImage', false, base64Img);
+                try {
+                    alert("Caricamento immagine nel testo in corso...");
+                    const url = await uploadImmagineSuImgBB(file);
+                    document.execCommand('insertImage', false, url);
                     document.getElementById('editor-testo').focus();
-                };
-                reader.readAsDataURL(file);
+                } catch (err) {
+                    console.error(err);
+                    alert("Errore durante il caricamento dell'immagine nel testo.");
+                }
             }
             input.value = "";
-        }
-
-        function formatText(command) {
-            document.execCommand(command, false, null);
-            document.getElementById('editor-testo').focus();
         }
 
         async function caricaListaGestione() {
@@ -728,7 +752,7 @@
             const editId = document.getElementById("edit-id").value;
             const titolo = document.getElementById("titolo").value;
             const categoria = document.getElementById("categoria").value;
-            const immagine = document.getElementById("immagine-base64").value;
+            const immagine = document.getElementById("immagine-url").value.trim();
             const testo = document.getElementById("editor-testo").innerHTML;
 
             if (testo.trim() === "" || testo.trim() === "<br>") {
@@ -765,8 +789,8 @@
 
                 document.getElementById("form-articolo").reset();
                 document.getElementById("editor-testo").innerHTML = "";
-                document.getElementById("immagine-base64").value = "";
                 document.getElementById("preview-container").innerHTML = "";
+                document.getElementById("file-immagine").value = "";
                 await caricaListaGestione();
             } catch (err) {
                 console.error("Errore salvataggio articolo su Firestore:", err);
@@ -781,7 +805,8 @@
             document.getElementById("edit-id").value = art.id;
             document.getElementById("titolo").value = art.titolo;
             document.getElementById("categoria").value = art.categoria;
-            document.getElementById("immagine-base64").value = art.immagine || "";
+            document.getElementById("immagine-url").value = art.immagine || "";
+            document.getElementById("file-immagine").value = "";
             if (art.immagine) {
                 document.getElementById("preview-container").innerHTML = `<img src="${art.immagine}" style="max-height: 100px; border-radius: 4px;" alt="Anteprima">`;
             } else {
@@ -799,8 +824,8 @@
             document.getElementById("edit-id").value = "";
             document.getElementById("form-articolo").reset();
             document.getElementById("editor-testo").innerHTML = "";
-            document.getElementById("immagine-base64").value = "";
             document.getElementById("preview-container").innerHTML = "";
+            document.getElementById("file-immagine").value = "";
             document.getElementById("form-title").innerText = "Pubblica un Nuovo Articolo";
             document.getElementById("btn-submit-articolo").innerText = "Pubblica";
             document.getElementById("btn-annulla-modifica").style.display = "none";
@@ -898,7 +923,7 @@
 
             try {
                 await window.setDoc(window.doc(window.db, "configurazioni", "discussione_attiva"), {
-                    argomento: nuevaDiscussione
+                    argomento: nuovaDiscussione
                 });
 
                 const commentiSnap = await window.getDocs(window.collection(window.db, "commenti_agora"));
