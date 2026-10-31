@@ -135,6 +135,39 @@
             border: none;
             box-shadow: 0 2px 6px rgba(0, 123, 255, 0.4);
         }
+
+        /* Lightbox immagini */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .lightbox-modal img {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 6px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
+        .lightbox-modal.active {
+            display: flex;
+        }
+        .testo-articolo img, .articolo-img {
+            cursor: zoom-in;
+            transition: opacity 0.2s;
+        }
+        .testo-articolo img:hover, .articolo-img:hover {
+            opacity: 0.92;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +210,11 @@
             <p>Caricamento articoli da Firebase...</p>
         </div>
     </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox-modal" onclick="chiudiLightbox()">
+        <img id="lightbox-img" src="" alt="Immagine ingrandita">
+    </div>
 
     <script>
         window.addEventListener("scroll", () => {
@@ -239,6 +277,7 @@
                 let articoliMap = new Map();
 
                 querySnapshot.forEach(docSnap => {
+                    // Mappa univoca per evitare duplicati
                     articoliMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
                 });
 
@@ -251,7 +290,6 @@
                     return;
                 }
 
-                // Carica voti da Firestore
                 const votiSnapshot = await window.getDocs(window.collection(window.db, "voti_articoli"));
                 let archivioVoti = {};
                 votiSnapshot.forEach(docSnap => {
@@ -296,7 +334,7 @@
                             <small id="conteggio-badge-${index}" style="opacity:0.8">(${infoMedia.conteggio})</small>
                         </div>
 
-                        <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img">
+                        <img src="${immagineSrc}" alt="${articolo.titolo}" class="articolo-img" onclick="apriLightbox(this.src)">
                         <div class="card-contenuto">
                             <span class="categoria ${info.classe}">${articolo.categoria}</span>
                             <h3>${articolo.titolo}</h3>
@@ -314,6 +352,22 @@
                     `;
                     container.appendChild(card);
                 });
+
+                // Attiva click immagini all'interno dei testi per il lightbox
+                document.querySelectorAll(".testo-articolo img").forEach(img => {
+                    img.style.cursor = "zoom-in";
+                    img.addEventListener("click", () => apriLightbox(img.src));
+                });
+
+                // Gestione hash per scroll preciso alla posizione dell'articolo
+                if (window.location.hash) {
+                    setTimeout(() => {
+                        const targetElement = document.querySelector(window.location.hash);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 300);
+                }
 
                 document.querySelectorAll(".valutazione-slider").forEach(slider => {
                     slider.addEventListener("input", async (e) => {
@@ -336,7 +390,6 @@
                             console.error("Errore salvataggio voto su Firestore:", err);
                         }
 
-                        // Aggiornamento pulito senza ricreare gli elementi DOM (evita i duplicati)
                         const nuvoInfoMedia = calcolaMediaVoti(key);
                         const testoBadge = document.getElementById(`testo-badge-${idx}`);
                         const conteggioBadge = document.getElementById(`conteggio-badge-${idx}`);
@@ -350,6 +403,17 @@
                 console.error("Errore caricamento articoli su leggi.html:", err);
                 container.innerHTML = "<p>Errore nel caricamento degli articoli.</p>";
             }
+        }
+
+        function apriLightbox(src) {
+            const lightbox = document.getElementById("lightbox");
+            const img = document.getElementById("lightbox-img");
+            img.src = src;
+            lightbox.classList.add("active");
+        }
+
+        function chiudiLightbox() {
+            document.getElementById("lightbox").classList.remove("active");
         }
     </script>
 </body>

@@ -23,7 +23,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Rendiamo db e le funzioni di Firestore globali per gli script della pagina
         window.db = db;
         window.collection = collection;
         window.addDoc = addDoc;
@@ -33,12 +32,27 @@
         window.deleteDoc = deleteDoc;
         window.setDoc = setDoc;
 
-        // Segnale che Firebase è pronto per la redazione
         window.dispatchEvent(new Event('firebase-ready'));
     </script>
+    <style>
+        .editor-toolbar {
+            position: sticky;
+            top: 75px;
+            z-index: 100;
+            background: #eae5d9;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        .editor-content img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+            margin: 15px auto;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-    <header>
+    <header id="site-header">
         <h1 id="titolo-dinamico" class="titolo-ibrido"></h1>
         <p>Area Riservata Owner</p>
         <nav class="main-nav">
@@ -142,6 +156,7 @@
                             <button type="button" onclick="formatText('bold')"><b>B</b></button>
                             <button type="button" onclick="formatText('italic')"><i>I</i></button>
                             <button type="button" onclick="formatText('insertUnorderedList')">Elenco</button>
+                            <button type="button" onclick="formatText('justifyCenter')">Centra</button>
                             <button type="button" onclick="triggerArticoloImmagine()">🖼️ Immagine</button>
                             <input type="file" id="file-img-articolo" accept="image/*" style="display: none;" onchange="inserisciImmagineArticolo(this)">
                         </div>
@@ -269,7 +284,6 @@
             inizializzaPagina();
         });
 
-        // Fallback nel caso DOMContentLoaded parta dopo l'evento Firebase
         document.addEventListener("DOMContentLoaded", () => {
             const testoTitolo = "Flusso di Coscienza";
             const classiFont = ['l-0', 'l-1', 'l-2', 'l-3', 'l-4', 'l-5', 'l-6', 'l-7', 'l-8', 'l-9', 'l-10', 'l-11', 'l-12', 'l-13', 'l-14', 'l-15', 'l-16', 'l-17'];
@@ -293,7 +307,6 @@
             if (!window.db) return;
             
             try {
-                // Carica impostazioni sondaggio attivo e discussione da Firestore
                 const configSnap = await window.getDocs(window.collection(window.db, "configurazioni"));
                 configSnap.forEach(docSnap => {
                     const data = docSnap.data();
@@ -434,7 +447,7 @@
                     return;
                 }
 
-                articoliInMemoria.forEach((art, index) => {
+                articoliInMemoria.forEach((art) => {
                     const div = document.createElement("div");
                     div.style.cssText = "background: #fcfbf7; padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d4cbb8;";
                     div.innerHTML = `
@@ -698,7 +711,6 @@
 
             try {
                 if (!editId) {
-                    // Nuovo articolo
                     await window.addDoc(window.collection(window.db, "articoli"), {
                         titolo,
                         categoria,
@@ -709,7 +721,6 @@
                     });
                     alert("Articolo pubblicato con successo su Firebase!");
                 } else {
-                    // Modifica articolo esistente
                     const artEsistente = articoliInMemoria.find(a => a.id === editId);
                     const immagineFinale = immagine || (artEsistente ? artEsistente.immagine : "");
                     
@@ -818,7 +829,6 @@
             inputsOpzioni.forEach(i => { if(i.value.trim()) opzioni.push(i.value.trim()); });
 
             try {
-                // Recupera voti del sondaggio attivo
                 const votoDocSnap = await window.getDocs(window.collection(window.db, "voti_sondaggio_attivo"));
                 let votiMappa = {};
                 let totaleVotanti = 0;
@@ -841,7 +851,6 @@
 
                 await window.addDoc(window.collection(window.db, "sondaggi_archiviati"), sondaggioArchiviato);
 
-                // Pulisci i voti attivi su Firestore
                 for (const d of votoDocSnap.docs) {
                     await window.deleteDoc(d.ref);
                 }
@@ -863,7 +872,6 @@
                     argomento: nuovaDiscussione
                 });
 
-                // Cancella i vecchi commenti all'cambio di argomento
                 const commentiSnap = await window.getDocs(window.collection(window.db, "commenti_agora"));
                 for (const d of commentiSnap.docs) {
                     await window.deleteDoc(d.ref);
