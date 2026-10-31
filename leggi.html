@@ -126,15 +126,6 @@
             transform: scale(1.15);
             background: #0056b3;
         }
-        .valutazione-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #007bff;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.4);
-        }
 
         /* Lightbox immagini */
         .lightbox-modal {
@@ -167,6 +158,32 @@
         }
         .testo-articolo img:hover, .articolo-img:hover {
             opacity: 0.92;
+        }
+
+        .btn-condividi {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f4f1ea;
+            border: 1px solid #d4cbb8;
+            color: #2c2c2c;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s ease;
+        }
+        .btn-condividi:hover {
+            background: #111;
+            color: #fcfbf7;
+            border-color: #111;
+        }
+        .btn-condividi svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
         }
     </style>
 </head>
@@ -226,6 +243,8 @@
             }
         });
 
+        let caricamentoAvviato = false;
+
         window.addEventListener("firebase-ready", async () => {
             await caricaArticoliEValutazioni();
         });
@@ -269,6 +288,9 @@
         }
 
         async function caricaArticoliEValutazioni() {
+            if (caricamentoAvviato) return;
+            caricamentoAvviato = true;
+
             const container = document.getElementById("lista-completa");
             container.innerHTML = "<p>Caricamento articoli da Firebase...</p>";
             
@@ -277,7 +299,6 @@
                 let articoliMap = new Map();
 
                 querySnapshot.forEach(docSnap => {
-                    // Mappa univoca per evitare duplicati
                     articoliMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
                 });
 
@@ -341,6 +362,11 @@
                             <small>Pubblicato il: ${articolo.data}</small>
                             <div class="testo-articolo">${articolo.testo}</div>
                             
+                            <button type="button" class="btn-condividi" onclick="condividiArticolo('${articolo.titolo}', window.location.href.split('#')[0] + '#articolo-${index}')">
+                                <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                                Condividi
+                            </button>
+
                             <div class="valutazione-box">
                                 <div class="valutazione-header">
                                     <span>Valuta questo articolo:</span>
@@ -353,13 +379,11 @@
                     container.appendChild(card);
                 });
 
-                // Attiva click immagini all'interno dei testi per il lightbox
                 document.querySelectorAll(".testo-articolo img").forEach(img => {
                     img.style.cursor = "zoom-in";
                     img.addEventListener("click", () => apriLightbox(img.src));
                 });
 
-                // Gestione hash per scroll preciso alla posizione dell'articolo
                 if (window.location.hash) {
                     setTimeout(() => {
                         const targetElement = document.querySelector(window.location.hash);
@@ -414,6 +438,21 @@
 
         function chiudiLightbox() {
             document.getElementById("lightbox").classList.remove("active");
+        }
+
+        function condividiArticolo(titolo, url) {
+            if (navigator.share) {
+                navigator.share({
+                    title: titolo,
+                    url: url
+                }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert("Link dell'articolo copiato negli appunti!");
+                }).catch(() => {
+                    prompt("Copia il link dell'articolo:", url);
+                });
+            }
         }
     </script>
 </body>
